@@ -31,6 +31,7 @@
 #include "common.h"
 #include "global.h"
 
+
 using namespace std;
 
 template<typename Neigh>
@@ -39,6 +40,11 @@ class Graphite : public dataStruc {
 public:
 
 	void print(void) override {
+#ifdef CALC_MEM_PER_EDGE
+		cout << "Total memory req: " << globalAllocator.totMem << endl;
+#endif
+
+
 //		std::cout << "Inserts--------------------" << std::endl;
 //		std::cout << "    Total: " << insTot << std::endl;
 //		std::cout << "    Succ : " << insSucc << std::endl;
@@ -52,10 +58,10 @@ public:
 //		std::cout << std::endl;
 //
 //		std::cout << "Final number of edges: " << insSucc - delSucc << std::endl;
-		ofstream out("probing_dist.csv");
-		for(auto it : probingDist){
-			out << it.first << "," << it.second << endl;
-		}
+//		ofstream out("probing_dist.csv");
+//		for(auto it : probingDist){
+//			out << it.first << "," << it.second << endl;
+//		}
 	}
 
 #ifdef USE_HYBRID_HASHMAP
@@ -373,8 +379,8 @@ public:
 	VertexArray<Neigh> vArray;
 	const int num_threads;
 
-	map<u64, u64> probingDist;
-	u64 probe;
+	//map<u64, u64> probingDist;
+	//u64 probe;
 
 	typedef struct{
 		u64 edgeCnt = 0;
@@ -410,6 +416,10 @@ public:
 		//vArray.dstLocMap.resize(numNodes);
 
 		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+		cout << "Num threads: " << omp_get_num_threads() << endl;
+#endif
 
 		property.resize(numNodes, -1);
 		affected.resize(numNodes);
@@ -520,9 +530,9 @@ public:
 		else {
 			//using hashed mode
 			u32 idx = dstId & (cap * 2 - 1);
-			probe = 0;
+			//probe = 0;
 			while(true){
-				probe++;
+				//probe++;
 				if(locMap[idx].dst == FLAG_EMPTY_SLOT){
 
 					//edge not found, insert
@@ -535,13 +545,13 @@ public:
 
 					edgeCnt++;
 					//insSucc++;
-					probingDist[probe]++;
+					//probingDist[probe]++;
 					return;
 				}
 				else if(locMap[idx].dst == dstId){
 					//edge found, update weight
 					neighs[locMap[idx].loc].setWeight(weight);
-					probingDist[probe]++;
+					//probingDist[probe]++;
 					return;
 				}
 				//move on
@@ -671,11 +681,11 @@ public:
 	}
 
 	void update(const EdgeList& el) override {
-		probe = 0;
+		//probe = 0;
 		const u64 batchSize = el.size();
 
 #ifdef _OPENMP
-		int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
 
 		#pragma omp parallel
 		for(u64 i = 0; i < batchSize; i++){
@@ -683,7 +693,8 @@ public:
 			const i64 dst = el[i].destination;
 			const i64 actualTh = omp_get_thread_num();
 
-			i64 targetTh = (src / 64) & thMask;
+			//i64 targetTh = (src / 64) & thMask;
+			i64 targetTh = (src / 64) % num_threads;
 			if(targetTh == actualTh){
 				if(!el[i].sourceExists){
 					thInfo[actualTh].nodeCnt++;
@@ -706,7 +717,8 @@ public:
 				}
 			}
 
-			targetTh = (dst / 64) & thMask;
+			//targetTh = (dst / 64) & thMask;
+			targetTh = (dst / 64) % num_threads;
 			if(targetTh == actualTh){
 				if(!affected[dst]){
 					affected[dst] = true;
@@ -758,6 +770,1394 @@ public:
 
 				//delete in edge
 				deleteEdge(vArray.inDegree[dst], vArray.inCapacity[dst], vArray.inNeighArr[dst], vArray.inMapArr[dst], src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+
+#ifdef USE_GT_BALANCED
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u8 pad[48];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		{
+			const i64 actualTh = omp_get_thread_num();
+			LIKWID_MARKER_START("upd");
+			for(u64 i = 0; i < batchSize; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+
+				//i64 targetTh = (src / 64) & thMask;
+				i64 targetTh = (src / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!el[i].sourceExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+					if(!el[i].destExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+
+					if(!affected[src]){
+						affected[src] = true;
+					}
+
+					if(!el[i].isDelete){
+						//insert out edge
+						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+					}
+					else{
+						//delete out edge
+						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+					}
+				}
+
+				//targetTh = (dst / 64) & thMask;
+				targetTh = (dst / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!affected[dst]){
+						affected[dst] = true;
+					}
+
+					u64 garbage;
+					if(!el[i].isDelete){
+						//insert in edge
+						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+					}
+					else{
+						//delete in edge
+						vArray[dst].inEdges.deleteEdge(src, garbage);
+					}
+				}
+
+			}
+			LIKWID_MARKER_STOP("upd");
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+
+#ifdef USE_GT_BALANCED_TYPE3_ONLY
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u8 pad[48];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = 0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = 0;
+		}
+
+		//cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		//cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		{
+			const i64 actualTh = omp_get_thread_num();
+			LIKWID_MARKER_START("upd");
+			for(u64 i = 0; i < batchSize; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+
+				//i64 targetTh = (src / 64) & thMask;
+				i64 targetTh = (src / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!el[i].sourceExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+					if(!el[i].destExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+
+					if(!affected[src]){
+						affected[src] = true;
+					}
+
+					if(!el[i].isDelete){
+						//insert out edge
+						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+					}
+					else{
+						//delete out edge
+						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+					}
+				}
+
+				//targetTh = (dst / 64) & thMask;
+				targetTh = (dst / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!affected[dst]){
+						affected[dst] = true;
+					}
+
+					u64 garbage;
+					if(!el[i].isDelete){
+						//insert in edge
+						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+					}
+					else{
+						//delete in edge
+						vArray[dst].inEdges.deleteEdge(src, garbage);
+					}
+				}
+
+			}
+			LIKWID_MARKER_STOP("upd");
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+#ifdef USE_GT_BALANCED_DYN_PARTITION
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u32 nodeCnt = 0;
+		u32 inCurrEdge = 0;
+		u32 inNewEdge = 0;
+		u32 inStart = 0;
+		u32 inEnd = 0;
+		u32 outCurrEdge = 0;
+		u32 outNewEdge = 0;
+		u32 outStart = 0;
+		u32 outEnd = 0;
+		u8 	pad[28];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		memset(thInfo, 0, sizeof(ThreadInfo) * 32);
+
+		const u32 avgNodePerTh = numNodes / numThreads;
+		thInfo[0].inStart = 0;
+		thInfo[0].outStart = 0;
+		for(u32 i = 0; i < numThreads-1; i++){
+			thInfo[i].inEnd = thInfo[i].inStart + avgNodePerTh;
+			thInfo[i+1].inStart = thInfo[i].inEnd + 1;
+
+			thInfo[i].outEnd = thInfo[i].outStart + avgNodePerTh;
+			thInfo[i+1].outStart = thInfo[i].outEnd + 1;
+		}
+		thInfo[numThreads - 1].inEnd = numNodes;
+		thInfo[numThreads - 1].outEnd = numNodes;
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		{
+			ThreadInfo& th = thInfo[omp_get_thread_num()];
+			const u32 inStart = th.inStart;
+			const u32 inEnd = th.inEnd;
+			const u32 outStart = th.outStart;
+			const u32 outEnd = th.outEnd;
+			LIKWID_MARKER_START("upd");
+			for(u64 i = 0; i < batchSize; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+
+				//i64 targetTh = (src / 64) & thMask;
+				//i64 targetTh = (src / 64) % num_threads;
+				if(src >= outStart &&  src <= outEnd){
+					if(!el[i].sourceExists){
+						th.nodeCnt++;
+					}
+					if(!el[i].destExists){
+						th.nodeCnt++;
+					}
+
+					if(!affected[src]){
+						affected[src] = true;
+					}
+
+					if(!el[i].isDelete){
+						//insert out edge
+						vArray[src].outEdges.insertEdge(dst, el[i].weight, th.outNewEdge);
+					}
+					else{
+						//delete out edge
+						vArray[src].outEdges.deleteEdge(dst, th.outNewEdge);
+					}
+				}
+
+				//targetTh = (dst / 64) & thMask;
+				//targetTh = (dst / 64) % num_threads;
+				if(dst >= inStart &&  dst <= inEnd){
+					if(!affected[dst]){
+						affected[dst] = true;
+					}
+
+					u64 garbage;
+					if(!el[i].isDelete){
+						//insert in edge
+						vArray[dst].inEdges.insertEdge(src, el[i].weight, th.inNewEdge);
+					}
+					else{
+						//delete in edge
+						vArray[dst].inEdges.deleteEdge(src, th.inNewEdge);
+					}
+				}
+
+			}
+			LIKWID_MARKER_STOP("upd");
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].inNewEdge + thInfo[i].outNewEdge;
+			thInfo[i].inCurrEdge += thInfo[i].inNewEdge;
+			thInfo[i].outCurrEdge += thInfo[i].outNewEdge;
+			thInfo[i].inNewEdge = 0;
+			thInfo[i].outNewEdge = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+
+		float avgEdge = (num_edges / 2.0) / num_nodes;
+
+
+		i64 inBalance = 0;
+		i64 outBalance = 0;
+		for(u64 i = 0; i < (num_threads - 1); i++){
+			ThreadInfo& th = thInfo[i];
+			//balance in edges
+			if(th.inCurrEdge > avgEdge){
+				//decrease workload
+				while(th.inCurrEdge > avgEdge){
+					const u32 remEdge = vArray[th.inEnd].inEdges.degree;
+					inBalance += remEdge;
+					th.inEnd--;
+					th.inCurrEdge -= remEdge;
+				}
+			}
+			else{
+				//increase workload
+				while(th.inCurrEdge < avgEdge){
+					th.inEnd++;
+					const u32 remEdge = vArray[th.inEnd].inEdges.degree;
+					inBalance -= remEdge;
+					th.inCurrEdge += remEdge;
+				}
+			}
+			thInfo[i+1].inStart = th.inEnd + 1;
+			thInfo[i+1].inCurrEdge += inBalance;
+
+			//balance out edges
+			if(th.outCurrEdge > avgEdge){
+				//decrease workload
+				while(th.outCurrEdge > avgEdge){
+					const u32 remEdge = vArray[th.outEnd].outEdges.degree;
+					outBalance += remEdge;
+					th.outEnd--;
+					th.outCurrEdge -= remEdge;
+				}
+			}
+			else{
+				//increase workload
+				while(th.outCurrEdge < avgEdge){
+					th.outEnd++;
+					const u32 remEdge = vArray[th.outEnd].outEdges.degree;
+					outBalance -= remEdge;
+					th.outCurrEdge += remEdge;
+				}
+			}
+			thInfo[i+1].outStart = th.outEnd + 1;
+			thInfo[i+1].outCurrEdge += outBalance;
+		}
+
+
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+
+#ifdef USE_GT_BALANCED_STDMAP
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u8 pad[48];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		{
+			LIKWID_MARKER_START("upd");
+			for(u64 i = 0; i < batchSize; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+				const i64 actualTh = omp_get_thread_num();
+
+				//i64 targetTh = (src / 64) & thMask;
+				i64 targetTh = (src / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!el[i].sourceExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+					if(!el[i].destExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+
+					if(!affected[src]){
+						affected[src] = true;
+					}
+
+					if(!el[i].isDelete){
+						//insert out edge
+						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+					}
+					else{
+						//delete out edge
+						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+					}
+				}
+
+				//targetTh = (dst / 64) & thMask;
+				targetTh = (dst / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!affected[dst]){
+						affected[dst] = true;
+					}
+
+					u64 garbage;
+					if(!el[i].isDelete){
+						//insert in edge
+						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+					}
+					else{
+						//delete in edge
+						vArray[dst].inEdges.deleteEdge(src, garbage);
+					}
+				}
+			}
+			LIKWID_MARKER_STOP("upd");
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+
+#if defined(USE_GT_BALANCED_MALLOC_STDMAP) || defined(USE_GT_BALANCED_ABSEIL) || defined(USE_GT_BALANCED_RHH)
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u8 pad[48];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)aligned_alloc(64,  sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		{
+			LIKWID_MARKER_START("upd");
+			for(u64 i = 0; i < batchSize; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+				const i64 actualTh = omp_get_thread_num();
+
+				//i64 targetTh = (src / 64) & thMask;
+				i64 targetTh = (src / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!el[i].sourceExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+					if(!el[i].destExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+
+					if(!affected[src]){
+						affected[src] = true;
+					}
+
+					if(!el[i].isDelete){
+						//insert out edge
+						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+					}
+					else{
+						//delete out edge
+						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+					}
+				}
+
+				//targetTh = (dst / 64) & thMask;
+				targetTh = (dst / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!affected[dst]){
+						affected[dst] = true;
+					}
+
+					u64 garbage;
+					if(!el[i].isDelete){
+						//insert in edge
+						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+					}
+					else{
+						//delete in edge
+						vArray[dst].inEdges.deleteEdge(src, garbage);
+					}
+				}
+			}
+			LIKWID_MARKER_STOP("upd");
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+#ifdef USE_GT_BALANCED_MALLOC
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u8 pad[48];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)aligned_alloc(64,  sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		{
+			LIKWID_MARKER_START("upd");
+			for(u64 i = 0; i < batchSize; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+				const i64 actualTh = omp_get_thread_num();
+
+				//i64 targetTh = (src / 64) & thMask;
+				i64 targetTh = (src / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!el[i].sourceExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+					if(!el[i].destExists){
+						thInfo[actualTh].nodeCnt++;
+					}
+
+					if(!affected[src]){
+						affected[src] = true;
+					}
+
+					if(!el[i].isDelete){
+						//insert out edge
+						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+					}
+					else{
+						//delete out edge
+						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+					}
+				}
+
+				//targetTh = (dst / 64) & thMask;
+				targetTh = (dst / 64) % num_threads;
+				if(targetTh == actualTh){
+					if(!affected[dst]){
+						affected[dst] = true;
+					}
+
+					u64 garbage;
+					if(!el[i].isDelete){
+						//insert in edge
+						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+					}
+					else{
+						//delete in edge
+						vArray[dst].inEdges.deleteEdge(src, garbage);
+					}
+				}
+			}
+			LIKWID_MARKER_STOP("upd");
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
+
+
+
+#ifdef USE_GT_UPDATE
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u8 pad[48];
+	} ThreadInfo;
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+
+		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	~Graphite(){
+
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+//	void deleteEdge(u64& deg, u64& cap, Neigh* __restrict &neighs, DstLocPair* __restrict &locMap, const Idx dstId, u64& edgeCnt){
+//		//delTot++;
+//		//search for existing edge
+//		if(!locMap){
+//			//using linear mode
+//			Neigh* __restrict nn = nullptr;
+//			for(u64 i = 0; i < deg; i++){
+//				if(neighs[i].node == dstId){
+//					nn = neighs + i;
+//					break;
+//				}
+//			}
+//			if(!nn){
+//				//edge not found, return
+//				return;
+//			}
+//			else{
+//				//edge found, delete
+//				deg--;
+//				edgeCnt--;
+//				//delSucc++;
+//				nn->node = neighs[deg].node;
+//				nn->setWeight(neighs[deg].getWeight());
+//			}
+//		}
+//		else {
+//			//using hashed mode
+//			u32 idx = dstId & (cap * 2 - 1);
+//			while(true){
+//				if(locMap[idx].dst == FLAG_EMPTY_SLOT){
+//					//edge not found, return
+//					return;
+//				}
+//				else if(locMap[idx].dst == dstId){
+//					//edge found, delete
+//					deg--;
+//					edgeCnt--;
+//					//delSucc++;
+//					locMap[idx].dst = FLAG_TOMB_STONE; 				//invalidate previous hash-table entry
+//
+//					const u32 loc = locMap[idx].loc;
+//					if(__builtin_expect(loc != deg, true)){		//nothing to do if last entry is removed
+//						const u32 node = neighs[deg].node;
+//						//copy last entry
+//						neighs[loc] = neighs[deg];
+//
+//						//point to correct location of the swapped entry
+//						u32 idxMoved = node & (cap * 2 - 1);
+//						while(locMap[idxMoved].dst != node){
+//							idxMoved++;
+//							if(idxMoved == (cap * 2)){
+//								idxMoved = 0;
+//							}
+//						}
+//						locMap[idxMoved].loc = loc;
+//					}
+//					break;
+//				}
+//				//move on
+//				idx++;
+//				if(idx == (cap * 2)){
+//					idx = 0;
+//				}
+//			}
+//		}
+//
+//		if((cap > 4) && (deg * 4) <= cap){
+//			//time to reduce capacity
+//
+//			const u64 newCap = cap / 2;
+//			Neigh* __restrict oldPtr = neighs;
+//			Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(newCap * sizeof(Neigh));
+//
+//			//copy old adjList and free
+//			memcpy(newPtr, oldPtr, deg * sizeof(Neigh));
+//			globalAllocator.freePow2(oldPtr, cap * sizeof(Neigh));
+//
+//			cap = newCap;
+//			neighs = newPtr;
+//
+//			if(locMap){
+//				//free old loc map (if any)
+//				globalAllocator.freePow2(locMap, cap * sizeof(DstLocPair));
+//				locMap = nullptr;
+//			}
+//
+//			if(cap >= HYBRID_HASH_PARTITION){
+//				locMap = (DstLocPair*)globalAllocator.allocate(sizeof(DstLocPair) * cap * 2);
+//				memset(locMap, -1, sizeof(DstLocPair) * cap * 2);	//This is bad. Is there any way to circumvent this?
+//
+//				const u32 mask = cap * 2 - 1;
+//
+//				//add existing nodes to hash
+//				const Neigh* __restrict nn = neighs;
+//				for(u64 i = 0; i < deg; i++){
+//					const u32 dst = nn[i].node;
+//					u32 idx = dst & mask;
+//					while(true){
+//						if(locMap[idx].dst == FLAG_EMPTY_SLOT){
+//							//found insertion point
+//							locMap[idx].dst = dst;
+//							locMap[idx].loc = i;
+//							break;
+//						}
+//						//move on
+//						idx++;
+//						if(idx == (cap * 2)){
+//							idx = 0;
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+
+		#pragma omp parallel
+		for(u64 i = 0; i < batchSize; i++){
+			const i64 src = el[i].source;
+			const i64 dst = el[i].destination;
+			const i64 actualTh = omp_get_thread_num();
+
+			//i64 targetTh = (src / 64) & thMask;
+			i64 targetTh = (src / 64) % num_threads;
+			if(targetTh == actualTh){
+				if(!el[i].sourceExists){
+					thInfo[actualTh].nodeCnt++;
+				}
+				if(!el[i].destExists){
+					thInfo[actualTh].nodeCnt++;
+				}
+
+				if(!affected[src]){
+					affected[src] = true;
+				}
+
+				if(!el[i].isDelete){
+					//insert out edge
+					vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+				}
+				else{
+					//delete out edge
+					vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+				}
+			}
+
+			//targetTh = (dst / 64) & thMask;
+			targetTh = (dst / 64) % num_threads;
+			if(targetTh == actualTh){
+				if(!affected[dst]){
+					affected[dst] = true;
+				}
+
+				u64 garbage;
+				if(!el[i].isDelete){
+					//insert in edge
+					vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+				}
+				else{
+					//delete in edge
+					vArray[dst].inEdges.deleteEdge(src, garbage);
+				}
+			}
+
+		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
 			}
 		}
 #endif
@@ -2155,10 +3555,6 @@ public:
 
 	~Graphite(){
 		free(vArray);
-	}
-
-	void print() override {
-		cout << "Done" << endl;
 	}
 
 	int64_t in_degree(NodeID n) override {

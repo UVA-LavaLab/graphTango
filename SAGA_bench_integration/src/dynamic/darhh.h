@@ -124,6 +124,13 @@ void darhh<T>::partition::enqueue(Edge const &e) {
 template<typename T>
 darhh<T>::darhh(bool w, bool d, int64_t init_nn, int64_t nt) :
 		super(w, d), init_num_nodes(init_nn), num_out_partitions(d ? nt / 2 : nt), num_in_partitions(d ? nt / 2 : 0) {
+
+#ifdef _OPENMP
+		if(nt > 0){
+			omp_set_num_threads(nt);
+		}
+#endif
+
 	super::property.resize(init_num_nodes, -1);
 	super::affected.resize(init_num_nodes);
 	super::affected.fill(false);
@@ -137,6 +144,7 @@ darhh<T>::darhh(bool w, bool d, int64_t init_nn, int64_t nt) :
 
 template<typename T>
 void darhh<T>::dequeue_loop(partition *pt, volatile bool &done) {
+	LIKWID_MARKER_START("upd");
 	Edge e;
 	pt->q_mutex.lock();
 	while (!done || !pt->q.empty()) {
@@ -159,6 +167,7 @@ void darhh<T>::dequeue_loop(partition *pt, volatile bool &done) {
 		pt->q_mutex.lock();
 	}
 	pt->q_mutex.unlock();
+	LIKWID_MARKER_STOP("upd");
 }
 
 template<typename T>
@@ -168,11 +177,13 @@ int32_t darhh<T>::pt_hash(NodeID const &n) const {
 
 template<typename T>
 void darhh<T>::update(EdgeList const &el) {
+
+
 	bool done = false;
 	std::vector<std::unique_ptr<std::thread>> dqs;
 
 	//#######............. thread pinning.............#########
-	int64_t count = 2;
+	int64_t count = 0;
 	//std::cout << "IN" << std::endl;
 	for (auto &ptr : in) {
 		//std::cout << "Count: " << count << " Cpu: " << count + 2 << std::endl;
@@ -215,6 +226,7 @@ void darhh<T>::update(EdgeList const &el) {
 	//#######............. thread pinning.............#########
 
 	int o_ix, i_ix;
+	LIKWID_MARKER_START("q");
 	for (auto &e : el) {
 		affected[e.source] = true;
 		affected[e.destination] = true;
@@ -235,6 +247,7 @@ void darhh<T>::update(EdgeList const &el) {
 		++dataStruc::num_edges;
 		++dataStruc::num_edges; // entered two edges into system from a single edge
 	}
+	LIKWID_MARKER_STOP("q");
 	done = true;
 	for (auto &dq : dqs) {
 		dq->join();

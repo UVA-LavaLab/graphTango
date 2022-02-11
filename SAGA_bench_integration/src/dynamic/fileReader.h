@@ -67,8 +67,8 @@ bool assignLogicalID(NodeID& n, MapTable& VMap, NodeID& lastAssignedLogicalID){
 }
 
 
-EdgeList readBatchFromCSV(ifstream& in, int batchSize, int batch_id, bool weighted, MapTable& VMap, NodeID& lastAssignedLogicalID){
-    EdgeList el;
+void readBatchFromCSV(EdgeList& el, ifstream& in, int batchSize, int batch_id, bool weighted, MapTable& VMap, NodeID& lastAssignedLogicalID){
+	el.clear();
     int edgecount = 0;
     string line;      
 
@@ -83,7 +83,6 @@ EdgeList readBatchFromCSV(ifstream& in, int batchSize, int batch_id, bool weight
             edgecount++;  
             if(edgecount == batchSize) break;   
         }             
-    }            
-    return el;
+    }
 }
 #endif  // FILEREADER_H_

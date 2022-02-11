@@ -20,11 +20,43 @@ typedef		int8_t		i8;
 
 typedef		I64			Idx;
 
-#define 	MIN_RET_VAL  		1
+#define 	MIN_RET_VAL  		2
+
+//#define LIKWID_PERFMON
+
+// This block enables to compile the code with and without the likwid header in place
+#ifdef LIKWID_PERFMON
+#include <likwid-marker.h>
+#else
+#define LIKWID_MARKER_INIT
+#define LIKWID_MARKER_THREADINIT
+#define LIKWID_MARKER_SWITCH
+#define LIKWID_MARKER_REGISTER(regionTag)
+#define LIKWID_MARKER_START(regionTag)
+#define LIKWID_MARKER_STOP(regionTag)
+#define LIKWID_MARKER_CLOSE
+#define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
+#endif
+
+
+#define		USE_CFH_FOR_DAH
+//#define		CALC_MEM_PER_EDGE
+//#define		ALLOC_FROM_NEXT_BLOCK
+//#define 	CALC_EDGE_TOUCHED
+//#define 	USE_HUGEPAGE
 
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
-#define 	USE_HYBRID_HASHMAP_WITH_CFH
+//#define 	USE_HYBRID_HASHMAP_WITH_CFH
+#define 	USE_GT_BALANCED
+//#define 	USE_GT_BALANCED_TYPE3_ONLY
+//#define 	USE_GT_BALANCED_MALLOC
+//#define 	USE_GT_BALANCED_STDMAP
+//#define 	USE_GT_BALANCED_ABSEIL
+//#define 	USE_GT_BALANCED_RHH
+//#define 	USE_GT_BALANCED_MALLOC_STDMAP
+//#define 	USE_GT_BALANCED_DYN_PARTITION
+//#define 	USE_GT_UPDATE
 //#define		USE_ONLY_LINEAR
 //#define		USE_ONLY_HASHMAP
 //#define		USE_WEIRD_SCHEME
@@ -40,8 +72,16 @@ typedef		I64			Idx;
 			|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING)								\
 			|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING_AND_EDGE_ARR_LOCKING)			\
 			|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING_TIGHTER)						\
-			|| defined(USE_CAHCE_FRIENDLY_HASH)
-#define		HYBRID_HASH_PARTITION		64UL
+			|| defined(USE_CAHCE_FRIENDLY_HASH)											\
+			|| defined(USE_GT_BALANCED)													\
+			|| defined(USE_GT_UPDATE)													\
+			|| defined(USE_GT_BALANCED_MALLOC)											\
+			|| defined(USE_GT_BALANCED_STDMAP)											\
+			|| defined(USE_GT_BALANCED_MALLOC_STDMAP)									\
+			|| defined(USE_GT_BALANCED_DYN_PARTITION)									\
+			|| defined(USE_GT_BALANCED_ABSEIL)											\
+			|| defined(USE_GT_BALANCED_RHH)
+#define		HYBRID_HASH_PARTITION		32UL
 #endif
 
 #ifdef		USE_SORTED_EDGES

@@ -82,6 +82,29 @@ bool ld_rhh<T>::iter::operator!=(const iter &other) const {
 	return cursor != other.cursor;
 }
 
+#ifdef USE_CFH_FOR_DAH
+
+template<typename T>
+void ld_rhh<T>::iter::operator++() {
+	const uint32_t cap = parent->get_capacity();
+	while(1){
+		pos++;
+		if(pos == cap){
+			pos = 0;
+		}
+		auto elem = parent->arr[pos];
+		if(elem.empty()){
+			cursor = nullptr;
+			break;
+		}
+		else if(elem.key.first == src && !elem.deleted()){
+			cursor = &(parent->arr[pos].val);
+			break;
+		}
+	}
+}
+
+#else
 template<typename T>
 void ld_rhh<T>::iter::operator++() {
 	for (;;) {
@@ -97,6 +120,7 @@ void ld_rhh<T>::iter::operator++() {
 		}
 	}
 }
+#endif
 
 template<typename T>
 void ld_rhh<T>::insert_elem(Edge const &edge) {
@@ -106,6 +130,32 @@ void ld_rhh<T>::insert_elem(Edge const &edge) {
 	super::insert_elem(id, node);
 }
 
+
+#ifdef USE_CFH_FOR_DAH
+
+template<typename T>
+uint32_t ld_rhh<T>::get_degree(NodeID const &id) const {
+	const uint32_t cap = this->get_capacity();
+	uint32_t pos = id % cap;
+	uint32_t count = 0;
+
+	while(1){
+		auto elem = this->arr[pos];
+		if (elem.empty())
+			break;
+		else if (elem.key.first == id && !elem.deleted())
+			++count;
+
+		pos++;
+		if(pos == cap){
+			pos = 0;
+		}
+	}
+	return count;
+}
+
+
+#else
 template<typename T>
 uint32_t ld_rhh<T>::get_degree(NodeID const &id) const {
 	uint32_t origin = id % this->arr.capacity();
@@ -124,10 +174,12 @@ uint32_t ld_rhh<T>::get_degree(NodeID const &id) const {
 	return count;
 }
 
+#endif
+
 template<typename T>
 typename ld_rhh<T>::iter ld_rhh<T>::begin(NodeID id) {
 	iter it = iter(id, this);
-	it.origin = id % this->arr.capacity();
+	it.origin = id % this->get_capacity();
 	it.pos = it.origin;
 	it.src = id;
 	auto elem = this->arr[it.pos];

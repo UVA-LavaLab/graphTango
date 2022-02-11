@@ -1,0 +1,12 @@
+prefix=/home/alif/research/abseil
+exec_prefix=${prefix}
+libdir=/home/alif/research/abseil/lib
+includedir=/home/alif/research/abseil/include
+
+Name: absl_statusor
+Description: Abseil statusor library
+URL: https://abseil.io/
+Version: head
+Requires: absl_status = head, absl_core_headers = head, absl_raw_logging_internal = head, absl_type_traits = head, absl_strings = head, absl_utility = head, absl_variant = head
+Libs: -L${libdir}  -labsl_statusor
+Cflags: -I${includedir} -DNOMINMAX

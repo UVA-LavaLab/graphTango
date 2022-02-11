@@ -8,9 +8,9 @@ dataStruc* createDataStruc(const std::string &type, bool weighted, bool directed
 			return new adList<Node>(weighted, directed);
 	} else if (type == "adListShared") {
 		if (weighted)
-			return new adListShared<NodeWeight>(weighted, directed, num_nodes);
+			return new adListShared<NodeWeight>(weighted, directed, num_nodes, num_threads);
 		else
-			return new adListShared<Node>(weighted, directed, num_nodes);
+			return new adListShared<Node>(weighted, directed, num_nodes, num_threads);
 	} else if (type == "adListChunked") {
 		if (weighted)
 			return new adListChunked<NodeWeight>(weighted, directed, num_nodes, num_threads);
@@ -32,5 +32,5 @@ dataStruc* createDataStruc(const std::string &type, bool weighted, bool directed
 	} else {
 		cout << "ERROR! Unrecognized Data Structure Type!" << endl;
 	}
-	return new adListShared<NodeWeight>(weighted, directed, num_nodes);
+	return nullptr;
 }

@@ -7,6 +7,7 @@
 #include "darhh.h"
 #include "adListChunked.h"
 #include "Graphite.h"
+#include "Vertex.h"
 
 #include "topDataStruc.h"
 
@@ -39,11 +40,20 @@ public:
 	}
 
 	neighborhood_iter& operator++() {
+#ifdef CALC_EDGE_TOUCHED
+		#pragma omp atomic
+		g_edge_touched++;
+#endif
+
 		cursor++;
 		return *this;
 	}
 
 	neighborhood_iter& operator++(int) {
+#ifdef CALC_EDGE_TOUCHED
+		#pragma omp atomic
+		g_edge_touched++;
+#endif
 		cursor++;
 		return *this;
 	}
@@ -738,7 +748,8 @@ public:
 
 #elif defined(USE_HYBRID_HASHMAP_WITH_GROUPING)								\
 	|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING_AND_EDGE_ARR_LOCKING)		\
-	|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING_TIGHTER)
+	|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING_TIGHTER)					\
+	|| defined(USE_GT_BALANCED_TYPE3_ONLY)
 
 template<typename U>
 class neighborhood<Graphite<U>> {
@@ -763,6 +774,51 @@ public:
 		return neighborhood_iter<Graphite<U>>(_start + _size);
 	}
 };
+
+#elif 	defined(USE_GT_BALANCED)					\
+		|| defined(USE_GT_BALANCED_MALLOC) 			\
+		|| defined(USE_GT_BALANCED_STDMAP) 			\
+		|| defined(USE_GT_BALANCED_MALLOC_STDMAP)	\
+		|| defined(USE_GT_BALANCED_DYN_PARTITION)	\
+		|| defined(USE_GT_BALANCED_ABSEIL)			\
+		|| defined(USE_GT_BALANCED_RHH)
+
+template<typename U>
+class neighborhood<Graphite<U>> {
+private:
+	U* _start;
+	uint64_t _size;
+public:
+	neighborhood(NodeID _node, Graphite<U> *_ds, bool _in_neigh) {
+		if(_in_neigh){
+			if(_ds->vArray[_node].inEdges.capacity <= EdgeArray<U>::TH0){
+				_start = _ds->vArray[_node].inEdges.etype.type1.neigh;
+			}
+			else{
+				_start = _ds->vArray[_node].inEdges.etype.type2_3.neighArr;
+			}
+			_size = _ds->vArray[_node].inEdges.degree;
+		}
+		else{
+			if(_ds->vArray[_node].outEdges.capacity <= EdgeArray<U>::TH0){
+				_start = _ds->vArray[_node].outEdges.etype.type1.neigh;
+			}
+			else{
+				_start = _ds->vArray[_node].outEdges.etype.type2_3.neighArr;
+			}
+			_size = _ds->vArray[_node].outEdges.degree;
+		}
+	}
+	neighborhood_iter<Graphite<U>> begin() {
+		return neighborhood_iter<Graphite<U>>(_start);
+	}
+	neighborhood_iter<Graphite<U>> end() {
+		return neighborhood_iter<Graphite<U>>(_start + _size);
+	}
+};
+
+#elif defined(USE_GT_UPDATE)
+
 
 #else
 

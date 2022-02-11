@@ -1,5 +1,4 @@
-#ifndef RHH_H
-#define RHH_H
+#pragma once
 
 #include <cassert>
 #include <cmath>
@@ -8,6 +7,148 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstring>
+
+#include "types.h"
+#include "common.h"
+
+#ifdef USE_CFH_FOR_DAH
+
+#define 	FLAG_EMPTY_SLOT			0xFFFFFFFFU
+#define 	FLAG_TOMB_STONE			0xFFFFFFFEU
+#define		CACHE_LINE_SIZE			64
+
+/* Robin Hood Hash Map Implementation */
+template<typename K, typename V>
+class rhh_elem {
+public:
+	K key;
+	V val;
+
+	rhh_elem(){	}
+	rhh_elem(K k, V v) : key(k), val(v) { }
+
+	inline void mark_deleted();
+	inline bool empty() const;
+	inline bool deleted() const;
+	inline bool valid() const;
+};
+
+template<typename K, typename V>
+void rhh_elem<K, V>::mark_deleted() {
+	*((uint32_t*)(&key)) = FLAG_TOMB_STONE;
+}
+
+template<typename K, typename V>
+bool rhh_elem<K, V>::empty() const {
+	return *((uint32_t*)(&key)) == FLAG_EMPTY_SLOT;
+}
+
+template<typename K, typename V>
+bool rhh_elem<K, V>::deleted() const {
+	return *((uint32_t*)(&key)) == FLAG_TOMB_STONE;
+}
+
+template<typename K, typename V>
+bool rhh_elem<K, V>::valid() const {
+	return *((uint32_t*)(&key)) < FLAG_TOMB_STONE;
+}
+
+
+template<typename K, typename V>
+class rhh {
+public:
+	//std::vector<rhh_elem<K, V>> arr;
+	rhh_elem<K, V>* __restrict arr;
+
+	rhh(int _cap, float load_factor) {
+		//arr.reserve(cap);
+		size = 0;
+		cap = getNextPow2MinRet(_cap);
+		arr = (rhh_elem<K, V>*)malloc(cap * sizeof(rhh_elem<K, V>));
+		memset(arr, -1, cap * sizeof(rhh_elem<K, V>));
+	}
+
+	void insert_elem(K key, V val);
+	bool delete_elem(K const &key);
+	inline uint32_t get_capacity() const;
+	inline uint32_t get_size() const;
+	uint32_t size = 0;
+	uint32_t cap = 0;
+};
+
+
+template<typename K, typename V>
+void rhh<K, V>::insert_elem(K key, V val) {
+	if(size * 2 >= cap){
+		//increase capacity
+		const uint32_t oldCap = cap;
+		rhh_elem<K, V>* __restrict oldPtr = arr;
+
+		cap = getNextPow2(oldCap * 2);
+		arr = (rhh_elem<K, V>*)malloc(cap * sizeof(rhh_elem<K, V>));
+		memset(arr, -1, cap * sizeof(rhh_elem<K, V>));
+
+		const u32 mask = cap - 1;
+		for(u32 i = 0; i < oldCap; i++){
+			const auto& elem = oldPtr[i];
+			if(elem.valid()){
+				const K key = elem.key;
+				u32 idx = key & mask;
+				while(true){
+					if(arr[idx].empty()){
+						arr[idx] = elem;
+						break;
+					}
+					//move on
+					idx++;
+					if(idx == cap){
+						idx = 0;
+					}
+				}
+			}
+		}
+		free(oldPtr);
+	}
+
+	u32 idx = key & (cap - 1);
+	while(true){
+		if(arr[idx].empty()){
+			//new
+			arr[idx] = {key,val};
+			size++;
+			break;
+		}
+		else if(arr[idx].key == key){
+			//found existing
+			arr[idx].val = val;
+			return;
+		}
+		//move on
+		idx++;
+		if(idx == cap){
+			idx = 0;
+		}
+	}
+}
+
+template<typename K, typename V>
+bool rhh<K, V>::delete_elem(K const &key) {
+
+	return true;
+}
+
+template<typename K, typename V>
+uint32_t rhh<K, V>::get_capacity() const {
+	return cap;
+}
+
+template<typename K, typename V>
+uint32_t rhh<K, V>::get_size() const {
+	return size;
+}
+
+#else
 
 /* Robin Hood Hash Map Implementation */
 

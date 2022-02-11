@@ -5,5 +5,11 @@
 
 #include "LockFreePoolWithList.h"
 
+#if defined(USE_GT_BALANCED_MALLOC) || defined(USE_GT_BALANCED_MALLOC_STDMAP)
+#else
 LockFreePoolWithList<> globalAllocator;
-//u64 g_totalEdges = 0;
+#endif
+
+#ifdef CALC_EDGE_TOUCHED
+u64 g_edge_touched = 0;
+#endif

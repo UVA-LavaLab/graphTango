@@ -1,4 +1,5 @@
 #include "stinger.h"
+#include "common.h"
 
 bool compare_and_swap(bool &x, const bool &old_val, const bool &new_val){
     return __sync_bool_compare_and_swap(&x, old_val, new_val);
@@ -215,6 +216,7 @@ void stinger::updateForVertex(const Edge& e, bool source){
 
 void stinger::update(const EdgeList& el)
 {
+#ifndef LIKWID_PERFMON
     #pragma omp parallel for 
     for(unsigned int i=0; i<el.size(); i++){
     	const Edge& e = el[i];
@@ -241,7 +243,42 @@ void stinger::update(const EdgeList& el)
         
         // examine destination vertex 
         updateForVertex(el[i], false);  
-    }              
+    }
+#else
+	#pragma omp parallel
+    {
+    	LIKWID_MARKER_START("upd");
+    	#pragma omp for
+		for(unsigned int i=0; i<el.size(); i++){
+			const Edge& e = el[i];
+			const NodeID src = e.source;
+			const NodeID dst = e.destination;
+
+			if(!e.sourceExists){
+				stinger_int64_fetch_add(&num_nodes, 1);
+			}
+			if(!e.destExists){
+				stinger_int64_fetch_add(&num_nodes, 1);
+			}
+
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+
+			// examine source vertex
+			updateForVertex(el[i], true);
+
+			// examine destination vertex
+			updateForVertex(el[i], false);
+		}
+		LIKWID_MARKER_STOP("upd");
+    }
+#endif
+
 }
 
 int64_t stinger::in_degree(NodeID n)

@@ -5,7 +5,7 @@
 #include <thread>
 #include <stdlib.h>
 #include <mutex>
-
+#include "omp.h"
 #include <cassert>
 // #include<memory>
 #include "x86_full_empty.h"
@@ -13,13 +13,14 @@
 
 #include "abstract_data_struc.h"
 #include "print.h"
+#include "common.h"
 
 bool compare_and_swap(bool &x, const bool &old_val, const bool &new_val);
 
 // T can be either node or nodeweight
 template <typename T>
 class adListShared: public dataStruc {
-    private:  
+    private:
       void updateExistingEdge(NodeID self, unsigned int index, T new_neighbor, bool in_neighbor);    
       void search_and_insert_edge(const Edge& e, bool source, std::vector<T> &neighborList, bool in_neighbor);          
       void updateForExistingVertex(const Edge& e, bool source);   
@@ -31,7 +32,7 @@ class adListShared: public dataStruc {
     public:  
       std::vector<std::vector<T>> out_neighbors;
       std::vector<std::vector<T>> in_neighbors;  
-      adListShared(bool w, bool d, int64_t _num_nodes);    
+      adListShared(bool w, bool d, int64_t _num_nodes, int _num_threads);
       void update(const EdgeList& el) override;
       void print() override;
       int64_t in_degree(NodeID n) override;
@@ -39,7 +40,12 @@ class adListShared: public dataStruc {
 };
 
 template <typename T>
-adListShared<T>::adListShared(bool w, bool d, int64_t _num_nodes): dataStruc(w, d), num_nodes_initialize(_num_nodes){    
+adListShared<T>::adListShared(bool w, bool d, int64_t _num_nodes, int num_threads): dataStruc(w, d), num_nodes_initialize(_num_nodes){
+#ifdef _OPENMP
+		if(num_threads > 0){
+			omp_set_num_threads(num_threads);
+		}
+#endif
 
     // initialize 1) property 2) affected 3) vertices vectors 4) mutex
     property.resize(num_nodes_initialize, -1);    
@@ -205,6 +211,7 @@ void adListShared<T>::updateForExistingVertex(const Edge& e, bool source) {
 template <typename T>
 void adListShared<T>::update(const EdgeList& el)
 {
+#ifndef LIKWID_PERFMON
     # pragma omp parallel for 
     // for(auto it=el.begin(); it!=el.end(); it++){
     for (unsigned int k = 0; k < el.size(); k ++) {
@@ -219,7 +226,29 @@ void adListShared<T>::update(const EdgeList& el)
         //if(!exists1) updateForNewVertex(*it, false);
         processMetaData(el[k], false);
         updateForExistingVertex(el[k], false); 
-    }               
+    }
+#else
+	# pragma omp parallel
+    {
+    	LIKWID_MARKER_START("upd");
+		// for(auto it=el.begin(); it!=el.end(); it++){
+		#pragma omp for
+		for (unsigned int k = 0; k < el.size(); k ++) {
+			// examine source vertex
+			//bool exists = vertexExists(*it, true);
+			//if(!exists) updateForNewVertex(*it, true);
+			processMetaData(el[k], true);
+			updateForExistingVertex(el[k], true);
+
+			// examine destination vertex
+			//bool exists1 = vertexExists(*it, false);
+			//if(!exists1) updateForNewVertex(*it, false);
+			processMetaData(el[k], false);
+			updateForExistingVertex(el[k], false);
+		}
+		LIKWID_MARKER_STOP("upd");
+    }
+#endif
 }
 
 template <typename T>

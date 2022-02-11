@@ -3,11 +3,14 @@
 C = g++
 CFLAGS = -O2 -g -std=c++11 -fpermissive
 
+LIKWID_DIR=/home/alif/.installs/likwid/
+ABSEIL_DIR=src/dynamic/abseil/
+
 CXX = g++
-#CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O3
-CXXFLAGS = -std=c++11 -g -pthread -O3
-#CXXFLAGS = -std=c++11 -g -pthread -fopenmp
-#CXXFLAGS = -std=c++11 -g -pthread
+CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O3 -I${LIKWID_DIR}/include -I${ABSEIL_DIR}/include -L${LIKWID_DIR}/lib
+#CXXFLAGS = -std=c++11 -g -pthread -O3  -I${LIKWID_DIR}/include -L${LIKWID_DIR}/lib
+#CXXFLAGS = -std=c++11 -g -pthread -fopenmp -I${LIKWID_DIR}/include -L${LIKWID_DIR}/lib
+#CXXFLAGS = -std=c++11 -g -pthread -I${LIKWID_DIR}/include -L${LIKWID_DIR}/lib
 
 DYN_PREFIX := d_
 
@@ -32,7 +35,7 @@ $(BIN_DIR)/errorExtractor : errorExtractor.cc
 	$(CXX) $(CXXFLAGS) $< -o $@
 
 frontEnd : $(DYN_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ -llikwid -lm ${ABSEIL_DIR}/lib/libabsl.a
 
 $(OBJ_DIR)/$(DYN_PREFIX)%.o : $(DYN_DIR)/%.cc $(DYN_HDR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@

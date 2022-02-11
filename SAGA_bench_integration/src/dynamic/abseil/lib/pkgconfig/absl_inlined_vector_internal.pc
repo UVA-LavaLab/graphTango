@@ -1,0 +1,12 @@
+prefix=/home/alif/research/abseil
+exec_prefix=${prefix}
+libdir=/home/alif/research/abseil/lib
+includedir=/home/alif/research/abseil/include
+
+Name: absl_inlined_vector_internal
+Description: Abseil inlined_vector_internal library
+URL: https://abseil.io/
+Version: head
+Requires: absl_compressed_tuple = head, absl_core_headers = head, absl_memory = head, absl_span = head, absl_type_traits = head
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX

@@ -52,7 +52,7 @@ class adListChunked: public dataStruc {
       
     public:  
       adListChunked(bool w, bool d, int64_t _num_nodes, int64_t _num_parts);
-      adListChunked(bool w, bool d, int64_t _num_nodes);
+      //adListChunked(bool w, bool d, int64_t _num_nodes);
       ~adListChunked();   
       void update(const EdgeList& el) override;
       void print() override;
@@ -89,6 +89,13 @@ void adListChunked<T>::partition::enqueue(Edge const &e) {
 template <typename T>
 adListChunked<T>::adListChunked(bool w, bool d, int64_t _num_nodes, int64_t _num_parts)
 : dataStruc(w, d){
+
+#ifdef _OPENMP
+		if(_num_parts > 0){
+			omp_set_num_threads(_num_parts);
+		}
+#endif
+
     num_nodes_initialize = _num_nodes;
     if (_num_parts % 2)
         num_partitions = _num_parts - 1;
@@ -121,37 +128,37 @@ adListChunked<T>::adListChunked(bool w, bool d, int64_t _num_nodes, int64_t _num
     }
 } 
 
-template <typename T>
-adListChunked<T>::adListChunked(bool w, bool d, int64_t _num_nodes)
-: dataStruc(w, d){
-    num_nodes_initialize = _num_nodes;
-    num_partitions = 16;
-
-    // initialize 1) property 2) affected 3) vertices vectors 4) markers
-    property.resize(num_nodes_initialize, -1);
-    affected.resize(num_nodes_initialize); affected.fill(false);
-
-    for (int i = 0; i < num_partitions / 2; i++) {
-        if (directed) {
-	        in.push_back(
-                unique_ptr<partition>(new partition(i, num_partitions / 2, w, d, _num_nodes))
-            );
-            
-	        out.push_back(
-                unique_ptr<partition>(new partition(i, num_partitions / 2, w, d, _num_nodes))
-            );
-        }
-        else {
-            out.push_back(
-                unique_ptr<partition>(new partition(2*i, num_partitions, w, d, _num_nodes))
-            );
-        
-	        out.push_back(
-                unique_ptr<partition>(new partition(2*i + 1, num_partitions, w, d, _num_nodes))
-            );
-        }
-    }
-}    
+//template <typename T>
+//adListChunked<T>::adListChunked(bool w, bool d, int64_t _num_nodes)
+//: dataStruc(w, d){
+//    num_nodes_initialize = _num_nodes;
+//    num_partitions = 16;
+//
+//    // initialize 1) property 2) affected 3) vertices vectors 4) markers
+//    property.resize(num_nodes_initialize, -1);
+//    affected.resize(num_nodes_initialize); affected.fill(false);
+//
+//    for (int i = 0; i < num_partitions / 2; i++) {
+//        if (directed) {
+//	        in.push_back(
+//                unique_ptr<partition>(new partition(i, num_partitions / 2, w, d, _num_nodes))
+//            );
+//
+//	        out.push_back(
+//                unique_ptr<partition>(new partition(i, num_partitions / 2, w, d, _num_nodes))
+//            );
+//        }
+//        else {
+//            out.push_back(
+//                unique_ptr<partition>(new partition(2*i, num_partitions, w, d, _num_nodes))
+//            );
+//
+//	        out.push_back(
+//                unique_ptr<partition>(new partition(2*i + 1, num_partitions, w, d, _num_nodes))
+//            );
+//        }
+//    }
+//}
 
 template <typename T>
 adListChunked<T>::~adListChunked(){
@@ -176,7 +183,7 @@ int32_t adListChunked<T>::hash_within_chunk(NodeID const &n) const {
 
 template <typename T>
 void adListChunked<T>::dequeue_loop(partition *partPtr, volatile bool& done){
-    
+	LIKWID_MARKER_START("udp");
     EdgeList el;
     partPtr->q_mutex.lock();    
     while (!done || !partPtr->q.empty()) {
@@ -199,6 +206,7 @@ void adListChunked<T>::dequeue_loop(partition *partPtr, volatile bool& done){
         partPtr->q_mutex.lock();
     }
     partPtr->q_mutex.unlock();
+    LIKWID_MARKER_STOP("udp");
 }
 
 template <typename T>
@@ -207,7 +215,7 @@ void adListChunked<T>::update(const EdgeList& el) {
     vector<unique_ptr<thread>> dqs;
     
     //#######............. thread pinning.............#########
-    int64_t count = 2;
+    int64_t count = 0;
     if (directed) {
         //cout << "IN" << endl;
         for(auto& ptr:in){        
@@ -283,6 +291,7 @@ void adListChunked<T>::update(const EdgeList& el) {
         );*/
 
     int o_ix, i_ix;
+    LIKWID_MARKER_START("q");
     for(unsigned int i=0; i<el.size(); i++){
         Edge e_reverse = el[i].reverse();
         
@@ -307,6 +316,7 @@ void adListChunked<T>::update(const EdgeList& el) {
             in[i_ix] -> enqueue(e_reverse);
         }
     }
+    LIKWID_MARKER_STOP("q");
 
     done = true;
     for(auto& dq: dqs) {

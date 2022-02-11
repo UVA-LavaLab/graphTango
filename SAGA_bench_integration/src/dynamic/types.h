@@ -30,6 +30,10 @@ public:
 	inline int operator %(int mod) const {
 		return this->first % mod;
 	}
+
+	inline uint64_t operator &(uint64_t mask) const {
+		return this->first & mask;
+	}
 };
 
 //class BaseNode {
