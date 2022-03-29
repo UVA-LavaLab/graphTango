@@ -8,7 +8,7 @@
 #include "stinger.h"
 #include "darhh.h"
 #include "adListChunked.h"
-#include "Graphite.h"
+#include "GraphTango.h"
 
 dataStruc* createDataStruc(const std::string& type, bool weighted, bool directed, int64_t num_nodes, int64_t num_threads);
 #endif

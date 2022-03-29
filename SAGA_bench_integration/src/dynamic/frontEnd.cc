@@ -8,7 +8,6 @@
 
 #include "topAlg.h"
 #include "topDataStruc.h"
-//#include "builder.h"
 #include "fileReader.h"
 #include "parser.h"
 #include "../common/timer.h"
@@ -27,13 +26,6 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
-	LIKWID_MARKER_INIT;
-
-	#pragma omp parallel
-	{
-	  LIKWID_MARKER_THREADINIT;
-	}
-
 	int batch_id = 0;
 	NodeID lastAssignedNodeID = -1;
 	MapTable VMAP;
@@ -44,14 +36,7 @@ int main(int argc, char *argv[]) {
 	dataStruc *ds = createDataStruc(opts.type, opts.weighted, opts.directed, opts.num_nodes, opts.num_threads);
 	Algorithm alg(opts.algorithm, ds, opts.type);
 
-
 	ofstream updF("Update.csv");
-
-	u32 maxIn = 0;
-	u32 maxOut = 0;
-
-	unordered_map<u32, u32> inMap;
-	unordered_map<u32, u32> outMap;
 
 	while (!file.eof()) {
 		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
@@ -59,21 +44,6 @@ int main(int argc, char *argv[]) {
 		t.Start();
 		ds->update(el);
 		t.Stop();
-
-		for(const auto it : el){
-			u32 src = it.source;
-			u32 dst = it.destination;
-			inMap[dst]++;
-			outMap[src]++;
-			if(inMap[dst] > maxIn){
-				maxIn = inMap[dst];
-			}
-			if(outMap[src] > maxOut){
-				maxOut = outMap[src];
-			}
-		}
-		inMap.clear();
-		outMap.clear();
 
 		updF << t.Seconds() << endl;
 		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
@@ -84,9 +54,6 @@ int main(int argc, char *argv[]) {
 	}
 	updF.close();
 
-
-	cout << "Max in: " << maxIn << endl;
-	cout << "Max Out: " << maxOut << endl;
 
 //	while (!file.eof()) {
 //		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
@@ -124,11 +91,8 @@ int main(int argc, char *argv[]) {
 //	}
 //	updF.close();
 
-
-
 	ds->print();
 #ifdef CALC_EDGE_TOUCHED
 	cout << "EDGES TOUCHED: " << g_edge_touched << endl;
 #endif
-	LIKWID_MARKER_CLOSE;
 }

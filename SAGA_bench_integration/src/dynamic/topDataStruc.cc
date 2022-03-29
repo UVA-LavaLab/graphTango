@@ -23,11 +23,11 @@ dataStruc* createDataStruc(const std::string &type, bool weighted, bool directed
 			return new darhh<Node>(weighted, directed, num_nodes, num_threads);
 	} else if (type == "stinger") {
 		return new stinger(weighted, directed, num_nodes);
-	} else if (type == "graphite") {
+	} else if (type == "graphTango") {
 		if (weighted) {
-			return new Graphite<NodeWeight>(weighted, directed, num_nodes, num_threads);
+			return new GraphTango<NodeWeight>(weighted, directed, num_nodes, num_threads);
 		} else {
-			return new Graphite<Node>(weighted, directed, num_nodes, num_threads);
+			return new GraphTango<Node>(weighted, directed, num_nodes, num_threads);
 		}
 	} else {
 		cout << "ERROR! Unrecognized Data Structure Type!" << endl;

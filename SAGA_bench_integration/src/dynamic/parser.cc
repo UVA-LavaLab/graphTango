@@ -34,7 +34,7 @@ bool supportedAlg(const std::string& alg)
 
 bool supportedDataStruc(const std::string &type)
 {
-    return (type == "graphite" || type== "adList" || type == "adListShared" || type == "degAwareRHH" || type == "stinger" || type == "adListChunked");
+    return (type == "graphTango" || type== "adList" || type == "adListShared" || type == "degAwareRHH" || type == "stinger" || type == "adListChunked");
 }
 
 void printUsage()
@@ -46,9 +46,9 @@ void printUsage()
 	      << "-b batchSize      suggestion = 100K\n"
 	      << "-w weighted       0=unweighted   1=weighted\n"
 	      << "-d directed       0=undirected   1=directed\n"
-	      << "-s dataStructure  data structure to use (default: adList)\n"
+	      << "-s dataStructure  data structure to use (default: graphTango)\n"
 		  << "-n max number of nodes  to initialize with\n"
-	      << "-a algorithm      algorithm to run (default: traverse)\n"
+	      << "-a algorithm      algorithm to run (default: bfsdyn)\n"
 	      << "-t number of threads      (default: 16)\n"
 	      << "  DATA STRUCTURE OPTIONS:\n"
 		  << "               1) adList (single-threaded) \n"		  
@@ -56,6 +56,7 @@ void printUsage()
 		  << "               3) adListChunked (multithreaded chunk style) \n"
 	      << "               4) degAwareRHH (multithreaded chunk style) \n"
 	      << "               5) stinger (multihtreaded shared style)\n"
+		  << "               5) graphTango (GraphTango paper)\n"
 	      << "  ALGORITHM OPTIONS: \n"
 	      << "               1) traverse\n"
 	      << "               2) prfromscratch\n"

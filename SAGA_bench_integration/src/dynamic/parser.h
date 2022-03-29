@@ -9,8 +9,8 @@ struct cmd_args {
     bool weighted = false;
     int64_t num_nodes = 0;
     std::string filename;
-    std::string type = "adList";
-    std::string algorithm = "traverse";
+    std::string type = "graphTango";
+    std::string algorithm = "bfsdyn";
     int8_t flags = 0;
     int64_t num_threads = 16; // default
 };

@@ -39,7 +39,7 @@ typedef		I64			Idx;
 #endif
 
 
-#define		USE_CFH_FOR_DAH
+//#define		USE_CFH_FOR_DAH
 //#define		CALC_MEM_PER_EDGE
 //#define		ALLOC_FROM_NEXT_BLOCK
 //#define 	CALC_EDGE_TOUCHED

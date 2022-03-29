@@ -43,7 +43,7 @@ using namespace std;
 #ifdef USE_CAHCE_FRIENDLY_HASH
 
 template <typename Neigh>
-class GraphiteHash{
+class GraphTangoHash{
 public:
 
 #ifdef USE_64_BIT_KEY
@@ -66,13 +66,13 @@ public:
 
 	//map<u32, u32>	probes;
 
-	GraphiteHash(){
+	GraphTangoHash(){
 		//capacity = NUM_INITIAL_ELEMS;
 		//neighArr = (Neigh*)globalAllocator.allocate(capacity * sizeof(Neigh));
 		//memset(neighArr, 0xff, capacity * sizeof(Neigh));
 	}
 
-	~GraphiteHash(){
+	~GraphTangoHash(){
 		//free(neighArr);
 	}
 
@@ -232,7 +232,7 @@ public:
 };
 
 template<typename Neigh>
-constexpr u8 GraphiteHash<Neigh>::rotation[8];
+constexpr u8 GraphTangoHash<Neigh>::rotation[8];
 
 #endif
 
@@ -240,7 +240,7 @@ constexpr u8 GraphiteHash<Neigh>::rotation[8];
 #ifdef USE_CAHCE_FRIENDLY_HASH_ONLY
 
 template <typename Neigh>
-class GraphiteHash{
+class GraphTangoHash{
 public:
 
 #ifdef USE_64_BIT_KEY
@@ -264,13 +264,13 @@ public:
 
 	//map<u32, u32>	probes;
 
-	GraphiteHash(){
+	GraphTangoHash(){
 		//capacity = NUM_INITIAL_ELEMS;
 		//neighArr = (Neigh*)globalAllocator.allocate(capacity * sizeof(Neigh));
 		//memset(neighArr, 0xff, capacity * sizeof(Neigh));
 	}
 
-	~GraphiteHash(){
+	~GraphTangoHash(){
 		//free(neighArr);
 	}
 
@@ -383,7 +383,7 @@ public:
 };
 
 template<typename Neigh>
-constexpr u8 GraphiteHash<Neigh>::rotation[8];
+constexpr u8 GraphTangoHash<Neigh>::rotation[8];
 
 #endif
 

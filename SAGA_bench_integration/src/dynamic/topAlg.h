@@ -15,9 +15,9 @@ This is the top API for performing an algorithm
 #include "dyn_bfs.h"
 #include "dyn_sssp.h"
 #include "dyn_sswp.h"
+#include "GraphTango.h"
 #include "source_picker_dynamic.h"
 
-#include "Graphite.h"
 
 class dataStruc;
 
@@ -33,7 +33,7 @@ private:
     bool is_stinger;  
     bool is_rhh; 
 	bool is_adList2;   // chunk style multithreading
-	bool is_graphite;
+	bool is_graphTango;
 
 public:    
     Algorithm(const std::string& alg_, dataStruc* ds_, const std::string& dtype_):
@@ -47,7 +47,7 @@ public:
 		is_stinger = (dtype.compare("stinger") == 0);
 		is_rhh = (dtype.compare("degAwareRHH") == 0);
 		is_adList2 = (dtype.compare("adListChunked") == 0);
-		is_graphite = (dtype.compare("graphite") == 0);
+		is_graphTango = (dtype.compare("graphTango") == 0);
 
 		std::cout << "Algorithm: " << alg << std::endl;
 		std::cout << "Data type: " << dtype << std::endl;
@@ -65,8 +65,8 @@ public:
 		adList<NodeWeight> *ds7 = dynamic_cast<adList<NodeWeight>*>(ds);
 		adList<Node> *ds8 = dynamic_cast<adList<Node>*>(ds);
 
-		Graphite<Node> *guw = dynamic_cast<Graphite<Node>*>(ds);
-		Graphite<NodeWeight> *gw = dynamic_cast<Graphite<NodeWeight>*>(ds);
+		GraphTango<Node> *guw = dynamic_cast<GraphTango<Node>*>(ds);
+		GraphTango<NodeWeight> *gw = dynamic_cast<GraphTango<NodeWeight>*>(ds);
 	
 		if (alg == "traverse") {
 	 	    if (is_adList && ds->weighted)
@@ -87,9 +87,9 @@ public:
                 return traverseAlg(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return traverseAlg(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return traverseAlg(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return traverseAlg(guw);
 		} else if (alg == "prfromscratch") {
 	    	if (is_adList && ds->weighted)
@@ -110,9 +110,9 @@ public:
                 return PRStartFromScratch(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return PRStartFromScratch(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return PRStartFromScratch(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return PRStartFromScratch(guw);
 		} else if (alg == "prdyn") {
 	    	if (is_adList && ds->weighted)
@@ -133,9 +133,9 @@ public:
                 return dynPRAlg(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return dynPRAlg(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return dynPRAlg(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return dynPRAlg(guw);
 		} else if (alg == "ccfromscratch") {
 	    	if (is_adList && ds->weighted)
@@ -156,9 +156,9 @@ public:
                 return CCStartFromScratch(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return CCStartFromScratch(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return CCStartFromScratch(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return CCStartFromScratch(guw);
 		} else if (alg == "ccdyn") {
 	    	if (is_adList && ds->weighted)
@@ -179,9 +179,9 @@ public:
                 return dynCCAlg(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return dynCCAlg(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return dynCCAlg(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return dynCCAlg(guw);
 		} else if (alg == "mcfromscratch") {
 	    	if (is_adList && ds->weighted)
@@ -202,9 +202,9 @@ public:
                 return MCStartFromScratch(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return MCStartFromScratch(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return MCStartFromScratch(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return MCStartFromScratch(guw);
 		} else if (alg == "mcdyn") {
 	    	if (is_adList && ds->weighted)
@@ -225,9 +225,9 @@ public:
                 return dynMCAlg(ds7);
 			else if (is_adListST && !ds->weighted) 
 			    return dynMCAlg(ds8);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return dynMCAlg(gw);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return dynMCAlg(guw);
 		} else if (alg == "bfsfromscratch") {
 	    	if (source == -1) {
@@ -255,9 +255,9 @@ public:
                 return BFSStartFromScratch(ds7, source);
 			else if (is_adListST && !ds->weighted) 
 			    return BFSStartFromScratch(ds8, source);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return BFSStartFromScratch(gw, source);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return BFSStartFromScratch(guw, source);
 		} else if (alg == "bfsdyn") {
 	    	if(source == -1){
@@ -285,9 +285,9 @@ public:
                 return dynBFSAlg(ds7, source);
 			else if (is_adListST && !ds->weighted) 
 			    return dynBFSAlg(ds8, source);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return dynBFSAlg(gw, source);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return dynBFSAlg(guw, source);
 		} else if (alg == "ssspfromscratch") {
 	    	if (source == -1) {
@@ -315,9 +315,9 @@ public:
                 return SSSPStartFromScratch(ds7, source, 1);
 			else if (is_adListST && !ds->weighted) 
 			    return SSSPStartFromScratch(ds8, source, 1);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return SSSPStartFromScratch(gw, source, 1);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return SSSPStartFromScratch(guw, source, 1);
 		} else if (alg == "ssspdyn") {
 		    if (source == -1) {
@@ -345,9 +345,9 @@ public:
                 return dynSSSPAlg(ds7, source);
 			else if (is_adListST && !ds->weighted) 
 			    return dynSSSPAlg(ds8, source);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return dynSSSPAlg(gw, source);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return dynSSSPAlg(guw, source);
 		} else if (alg == "sswpfromscratch") {
 	    	if (source == -1) {
@@ -375,9 +375,9 @@ public:
                 return SSWPStartFromScratch(ds7, source);
 			else if (is_adListST && !ds->weighted) 
 			    return SSWPStartFromScratch(ds8, source);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return SSWPStartFromScratch(gw, source);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return SSWPStartFromScratch(guw, source);
 		} else if (alg == "sswpdyn") {
 	    	if(source == -1) {
@@ -405,9 +405,9 @@ public:
                 return dynSSWPAlg(ds7, source);
 			else if (is_adListST && !ds->weighted) 
 			    return dynSSWPAlg(ds8, source);
-			else if (is_graphite && ds->weighted)
+			else if (is_graphTango && ds->weighted)
 				return dynSSWPAlg(gw, source);
-			else if (is_graphite && !ds->weighted)
+			else if (is_graphTango && !ds->weighted)
 				return dynSSWPAlg(guw, source);
 		} else {
 	    	std::cout << "Error! Unrecognized Algorithm!" << std::endl;

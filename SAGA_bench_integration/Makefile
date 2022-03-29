@@ -1,16 +1,12 @@
 # See LICENSE.txt for license details.
 
 C = g++
-CFLAGS = -O2 -g -std=c++11 -fpermissive
+CFLAGS = -O3 -g -std=c++11 -fpermissive
 
-LIKWID_DIR=/home/alif/.installs/likwid/
 ABSEIL_DIR=src/dynamic/abseil/
 
 CXX = g++
-CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O3 -I${LIKWID_DIR}/include -I${ABSEIL_DIR}/include -L${LIKWID_DIR}/lib
-#CXXFLAGS = -std=c++11 -g -pthread -O3  -I${LIKWID_DIR}/include -L${LIKWID_DIR}/lib
-#CXXFLAGS = -std=c++11 -g -pthread -fopenmp -I${LIKWID_DIR}/include -L${LIKWID_DIR}/lib
-#CXXFLAGS = -std=c++11 -g -pthread -I${LIKWID_DIR}/include -L${LIKWID_DIR}/lib
+CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O3
 
 DYN_PREFIX := d_
 
@@ -29,13 +25,19 @@ DYN_OBJ := $(addprefix $(OBJ_DIR)/$(DYN_PREFIX),$(notdir $(patsubst %.c,%.o,$(wi
 DYN_OBJ += $(addprefix $(OBJ_DIR)/$(DYN_PREFIX),$(notdir $(patsubst %.cc,%.o,$(wildcard $(DYN_DIR)/*.cc))))
 
 .PHONY : all
-all : $(BIN_DIR)/errorExtractor frontEnd 
+all : $(OBJ_DIR) $(BIN_DIR) $(BIN_DIR)/errorExtractor frontEnd 
+
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+	
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 $(BIN_DIR)/errorExtractor : errorExtractor.cc
 	$(CXX) $(CXXFLAGS) $< -o $@
 
 frontEnd : $(DYN_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@ -llikwid -lm ${ABSEIL_DIR}/lib/libabsl.a
+	$(CXX) $(CXXFLAGS) $^ -o $@ -lm
 
 $(OBJ_DIR)/$(DYN_PREFIX)%.o : $(DYN_DIR)/%.cc $(DYN_HDR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -47,5 +49,5 @@ $(OBJ_DIR)/$(DYN_PREFIX)%.o : $(DYN_DIR)/%.c $(DYN_HDR)
 
 clean:
 	rm -f frontEnd
-	rm -f $(OBJ_DIR)/*.o
-	rm -f $(BIN_DIR)/*
+	rm -rf $(OBJ_DIR)
+	rm -rf $(BIN_DIR)

@@ -6,7 +6,7 @@
 #include "stinger.h"
 #include "darhh.h"
 #include "adListChunked.h"
-#include "Graphite.h"
+#include "GraphTango.h"
 #include "Vertex.h"
 
 #include "topDataStruc.h"
@@ -26,8 +26,8 @@ public:
 };
 
 template<typename U>
-class neighborhood_iter<Graphite<U>> {
-	friend class neighborhood<Graphite<U>> ;
+class neighborhood_iter<GraphTango<U>> {
+	friend class neighborhood<GraphTango<U>> ;
 private:
 	U* cursor;
 public:
@@ -35,7 +35,7 @@ public:
 		cursor = _cursor;
 	}
 
-	bool operator!=(const neighborhood_iter<Graphite<U>> &it) {
+	bool operator!=(const neighborhood_iter<GraphTango<U>> &it) {
 		return cursor != it.cursor;
 	}
 
@@ -696,15 +696,15 @@ public:
 #if defined(USE_CAHCE_FRIENDLY_HASH_ONLY)
 
 template<typename U>
-class neighborhood<Graphite<U>> {
+class neighborhood<GraphTango<U>> {
 private:
 	U* _start;
 	uint64_t _size;
 public:
-	neighborhood(NodeID _node, Graphite<U> *_ds, bool _in_neigh) {
+	neighborhood(NodeID _node, GraphTango<U> *_ds, bool _in_neigh) {
 		Vertex<U> &v = _ds->vArray[_node];
 		if(_in_neigh){
-			GraphiteHash<U> &edges = v.inEdges;
+			GraphTangoHash<U> &edges = v.inEdges;
 			_size = edges.degree;
 			if(edges.adjList == nullptr){
 				//create adjacency list from hash table
@@ -721,7 +721,7 @@ public:
 			_start = edges.adjList;
 		}
 		else{
-			GraphiteHash<U> &edges = v.outEdges;
+			GraphTangoHash<U> &edges = v.outEdges;
 			_size = edges.degree;
 			if(edges.adjList == nullptr){
 				//create adjacency list from hash table
@@ -738,11 +738,11 @@ public:
 			_start = edges.adjList;
 		}
 	}
-	neighborhood_iter<Graphite<U>> begin() {
-		return neighborhood_iter<Graphite<U>>(_start);
+	neighborhood_iter<GraphTango<U>> begin() {
+		return neighborhood_iter<GraphTango<U>>(_start);
 	}
-	neighborhood_iter<Graphite<U>> end() {
-		return neighborhood_iter<Graphite<U>>(_start + _size);
+	neighborhood_iter<GraphTango<U>> end() {
+		return neighborhood_iter<GraphTango<U>>(_start + _size);
 	}
 };
 
@@ -752,12 +752,12 @@ public:
 	|| defined(USE_GT_BALANCED_TYPE3_ONLY)
 
 template<typename U>
-class neighborhood<Graphite<U>> {
+class neighborhood<GraphTango<U>> {
 private:
 	U* _start;
 	uint64_t _size;
 public:
-	neighborhood(NodeID _node, Graphite<U> *_ds, bool _in_neigh) {
+	neighborhood(NodeID _node, GraphTango<U> *_ds, bool _in_neigh) {
 		if(_in_neigh){
 			_start = _ds->vArray[_node].inEdges.neighArr;
 			_size = _ds->vArray[_node].inEdges.degree;
@@ -767,11 +767,11 @@ public:
 			_size = _ds->vArray[_node].outEdges.degree;
 		}
 	}
-	neighborhood_iter<Graphite<U>> begin() {
-		return neighborhood_iter<Graphite<U>>(_start);
+	neighborhood_iter<GraphTango<U>> begin() {
+		return neighborhood_iter<GraphTango<U>>(_start);
 	}
-	neighborhood_iter<Graphite<U>> end() {
-		return neighborhood_iter<Graphite<U>>(_start + _size);
+	neighborhood_iter<GraphTango<U>> end() {
+		return neighborhood_iter<GraphTango<U>>(_start + _size);
 	}
 };
 
@@ -784,12 +784,12 @@ public:
 		|| defined(USE_GT_BALANCED_RHH)
 
 template<typename U>
-class neighborhood<Graphite<U>> {
+class neighborhood<GraphTango<U>> {
 private:
 	U* _start;
 	uint64_t _size;
 public:
-	neighborhood(NodeID _node, Graphite<U> *_ds, bool _in_neigh) {
+	neighborhood(NodeID _node, GraphTango<U> *_ds, bool _in_neigh) {
 		if(_in_neigh){
 			if(_ds->vArray[_node].inEdges.capacity <= EdgeArray<U>::TH0){
 				_start = _ds->vArray[_node].inEdges.etype.type1.neigh;
@@ -809,11 +809,11 @@ public:
 			_size = _ds->vArray[_node].outEdges.degree;
 		}
 	}
-	neighborhood_iter<Graphite<U>> begin() {
-		return neighborhood_iter<Graphite<U>>(_start);
+	neighborhood_iter<GraphTango<U>> begin() {
+		return neighborhood_iter<GraphTango<U>>(_start);
 	}
-	neighborhood_iter<Graphite<U>> end() {
-		return neighborhood_iter<Graphite<U>>(_start + _size);
+	neighborhood_iter<GraphTango<U>> end() {
+		return neighborhood_iter<GraphTango<U>>(_start + _size);
 	}
 };
 
@@ -823,12 +823,12 @@ public:
 #else
 
 template<typename U>
-class neighborhood<Graphite<U>> {
+class neighborhood<GraphTango<U>> {
 private:
 	U* _start;
 	uint64_t _size;
 public:
-	neighborhood(NodeID _node, Graphite<U> *_ds, bool _in_neigh) {
+	neighborhood(NodeID _node, GraphTango<U> *_ds, bool _in_neigh) {
 		if(_in_neigh){
 			_start = _ds->vArray.inNeighArr[_node];
 			_size = _ds->vArray.inDegree[_node];
@@ -838,13 +838,13 @@ public:
 			_size = _ds->vArray.outDegree[_node];
 		}
 	}
-	neighborhood_iter<Graphite<U>> begin() {
+	neighborhood_iter<GraphTango<U>> begin() {
 //		#pragma omp atomic
 //		g_totalEdges += _size;
-		return neighborhood_iter<Graphite<U>>(_start);
+		return neighborhood_iter<GraphTango<U>>(_start);
 	}
-	neighborhood_iter<Graphite<U>> end() {
-		return neighborhood_iter<Graphite<U>>(_start + _size);
+	neighborhood_iter<GraphTango<U>> end() {
+		return neighborhood_iter<GraphTango<U>>(_start + _size);
 	}
 };
 

@@ -35,7 +35,7 @@
 using namespace std;
 
 template<typename Neigh>
-class Graphite : public dataStruc {
+class GraphTango : public dataStruc {
 
 public:
 
@@ -77,7 +77,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -99,9 +99,6 @@ public:
 			vArray.inMapArr[i] = nullptr;
 		}
 
-		//vArray.usingHash.resize(numNodes, false);
-		//vArray.dstLocMap.resize(numNodes);
-
 		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
 
 		property.resize(numNodes, -1);
@@ -109,7 +106,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -390,7 +387,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -426,7 +423,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -802,7 +799,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -835,7 +832,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -973,7 +970,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -1006,7 +1003,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -1150,7 +1147,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -1198,7 +1195,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -1398,7 +1395,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -1431,7 +1428,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -1568,7 +1565,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -1601,7 +1598,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -1737,7 +1734,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -1770,7 +1767,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -1908,7 +1905,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -1941,7 +1938,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -2188,7 +2185,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -2205,7 +2202,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 		free(vArray);
 	}
 
@@ -2385,7 +2382,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -2402,7 +2399,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 		free(vArray);
 	}
 
@@ -2555,7 +2552,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -2585,7 +2582,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 		free(vArray);
 	}
 
@@ -2768,7 +2765,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -2799,7 +2796,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 		free(vArray);
 	}
 
@@ -3021,7 +3018,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -3051,7 +3048,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -3286,7 +3283,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -3313,7 +3310,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 
 	}
 
@@ -3512,7 +3509,7 @@ public:
 
 
 #ifdef USE_CAHCE_FRIENDLY_HASH
-#include "GraphiteHash.h"
+#include "GraphTangoHash.h"
 
 	Vertex<Neigh>* vArray;
 	const int num_threads;
@@ -3525,7 +3522,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -3543,7 +3540,7 @@ public:
 			v.outEdges.neighArr = v.outEdges.neigh;
 		}
 
-		cout << "Size of GraphiteHash: " << sizeof(GraphiteHash<Neigh>) << endl;
+		cout << "Size of GraphTangoHash: " << sizeof(GraphTangoHash<Neigh>) << endl;
 		cout << "Size of Vertex: " << sizeof(Vertex<Neigh>) << endl;
 		cout << "Size of ThreadInfo: " << sizeof(ThreadInfo) << endl;
 		cout << "Size of Neigh: " << sizeof(Neigh) << endl;
@@ -3553,7 +3550,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 		free(vArray);
 	}
 
@@ -3646,7 +3643,7 @@ public:
 
 
 #ifdef USE_CAHCE_FRIENDLY_HASH_ONLY
-#include "GraphiteHash.h"
+#include "GraphTangoHash.h"
 
 	Vertex<Neigh>* vArray;
 	const int num_threads;
@@ -3659,7 +3656,7 @@ public:
 
 	alignas(64) ThreadInfo thInfo[32];
 
-	Graphite(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
 #ifdef _OPENMP
 		if(numThreads > 0){
 			omp_set_num_threads(numThreads);
@@ -3679,7 +3676,7 @@ public:
 			//v.outEdges.neighArr = v.outEdges.neigh;
 		}
 
-		cout << "Size of GraphiteHash: " << sizeof(GraphiteHash<Neigh>) << endl;
+		cout << "Size of GraphTangoHash: " << sizeof(GraphTangoHash<Neigh>) << endl;
 		cout << "Size of Vertex: " << sizeof(Vertex<Neigh>) << endl;
 		cout << "Size of ThreadInfo: " << sizeof(ThreadInfo) << endl;
 		cout << "Size of Neigh: " << sizeof(Neigh) << endl;
@@ -3689,7 +3686,7 @@ public:
 		affected.fill(false);
 	}
 
-	~Graphite(){
+	~GraphTango(){
 		free(vArray);
 	}
 
@@ -4338,7 +4335,7 @@ public:
 
 	}*/
 
-	//static Graphite* buildFromTextCSR(const std::string &fname){
+	//static GraphTango* buildFromTextCSR(const std::string &fname){
 
 	//}
 
@@ -4366,7 +4363,7 @@ public:
 		}
 	}*/
 
-//	static Graphite* buildFromStingerCSR(
+//	static GraphTango* buildFromStingerCSR(
 //			const i64 numThreads,
 //			const U64 nv,
 //			const U64 ne,
@@ -4375,7 +4372,7 @@ public:
 //			const I64* __restrict weight,
 //			const VProp& defaultProp = 0)
 //	{
-//		auto gra = new Graphite<VProp, EProp>(numThreads);
+//		auto gra = new GraphTango<VProp, EProp>(numThreads);
 //
 //		gra->vArray.resize(nv);
 //
@@ -4561,11 +4558,11 @@ public:
 //		return gra;
 //	}
 
-	/*static Graphite* buildFromCSC(const std::string &fname){
+	/*static GraphTango* buildFromCSC(const std::string &fname){
 
 	}
 
-	static Graphite* buildFromCOO(const std::string &fname){
+	static GraphTango* buildFromCOO(const std::string &fname){
 
 	}*/
 

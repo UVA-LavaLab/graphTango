@@ -1769,13 +1769,13 @@ public:
 
 #ifdef USE_CAHCE_FRIENDLY_HASH
 
-#include "GraphiteHash.h"
+#include "GraphTangoHash.h"
 
 template <typename Neigh>
 class Vertex{
 public:
-	 GraphiteHash<Neigh>		inEdges;
-	 GraphiteHash<Neigh>		outEdges;
+	 GraphTangoHash<Neigh>		inEdges;
+	 GraphTangoHash<Neigh>		outEdges;
 };
 
 #endif
@@ -1783,13 +1783,13 @@ public:
 
 #ifdef USE_CAHCE_FRIENDLY_HASH_ONLY
 
-#include "GraphiteHash.h"
+#include "GraphTangoHash.h"
 
 template <typename Neigh>
 class Vertex{
 public:
-	 GraphiteHash<Neigh>		inEdges;
-	 GraphiteHash<Neigh>		outEdges;
+	 GraphTangoHash<Neigh>		inEdges;
+	 GraphTangoHash<Neigh>		outEdges;
 };
 
 #endif
