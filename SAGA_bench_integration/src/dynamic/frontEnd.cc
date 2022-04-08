@@ -95,4 +95,7 @@ int main(int argc, char *argv[]) {
 #ifdef CALC_EDGE_TOUCHED
 	cout << "EDGES TOUCHED: " << g_edge_touched << endl;
 #endif
+#ifdef CALC_TYPE_SWITCH
+	cout << "Switch count: " << ds->switchCnt << endl;
+#endif
 }

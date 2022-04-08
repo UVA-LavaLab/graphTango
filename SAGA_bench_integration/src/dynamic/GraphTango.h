@@ -791,11 +791,20 @@ public:
 	//VertexArray<Neigh> vArray;
 	const int num_threads;
 
+#ifdef CALC_TYPE_SWITCH
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u64 switchCnt = 0;
+		u8 pad[40];
+	} ThreadInfo;
+#else
 	typedef struct{
 		u64 edgeCnt = 0;
 		u64 nodeCnt = 0;
 		u8 pad[48];
 	} ThreadInfo;
+#endif
 
 	alignas(64) ThreadInfo thInfo[32];
 
@@ -805,7 +814,6 @@ public:
 			omp_set_num_threads(numThreads);
 		}
 #endif
-
 		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
 
 		#pragma omp parallel for
@@ -833,7 +841,13 @@ public:
 	}
 
 	~GraphTango(){
-
+#ifdef CALC_TYPE_SWITCH
+		u32 switchCnt = 0;
+		for(u64 i = 0; i < num_threads; i++){
+			switchCnt += thInfo[i].switchCnt;
+		}
+		cout << "Switch Count: " << switchCnt << endl;
+#endif
 	}
 
 	int64_t in_degree(NodeID n) override {
@@ -873,6 +887,16 @@ public:
 						affected[src] = true;
 					}
 
+					#ifdef CALC_TYPE_SWITCH
+					VType initType = VType::VTYPE_3;
+					if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH0){
+						initType = VType::VTYPE_1;
+					}
+					else if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH1){
+						initType = VType::VTYPE_2;
+					}
+					#endif
+
 					if(!el[i].isDelete){
 						//insert out edge
 						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
@@ -881,6 +905,19 @@ public:
 						//delete out edge
 						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
 					}
+
+					#ifdef CALC_TYPE_SWITCH
+					VType finType = VType::VTYPE_3;
+					if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH0){
+						finType = VType::VTYPE_1;
+					}
+					else if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH1){
+						finType = VType::VTYPE_2;
+					}
+					if(initType != finType){
+						thInfo[actualTh].switchCnt++;
+					}
+					#endif
 				}
 
 				//targetTh = (dst / 64) & thMask;
@@ -889,6 +926,16 @@ public:
 					if(!affected[dst]){
 						affected[dst] = true;
 					}
+
+					#ifdef CALC_TYPE_SWITCH
+					VType initType = VType::VTYPE_3;
+					if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH0){
+						initType = VType::VTYPE_1;
+					}
+					else if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH1){
+						initType = VType::VTYPE_2;
+					}
+					#endif
 
 					u64 garbage;
 					if(!el[i].isDelete){
@@ -899,6 +946,19 @@ public:
 						//delete in edge
 						vArray[dst].inEdges.deleteEdge(src, garbage);
 					}
+
+					#ifdef CALC_TYPE_SWITCH
+					VType finType = VType::VTYPE_3;
+					if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH0){
+						finType = VType::VTYPE_1;
+					}
+					else if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH1){
+						finType = VType::VTYPE_2;
+					}
+					if(initType != finType){
+						thInfo[actualTh].switchCnt++;
+					}
+					#endif
 				}
 
 			}
@@ -947,6 +1007,10 @@ public:
 			thInfo[i].edgeCnt = 0;
 			num_nodes += thInfo[i].nodeCnt;
 			thInfo[i].nodeCnt = 0;
+#ifdef CALC_TYPE_SWITCH
+			switchCnt += thInfo[i].switchCnt;
+			thInfo[i].switchCnt = 0;
+#endif
 		}
 		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
 	}

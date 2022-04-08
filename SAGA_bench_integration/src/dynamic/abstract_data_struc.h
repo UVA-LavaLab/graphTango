@@ -9,10 +9,17 @@
 #include "types.h"
 #include "../common/pvector.h"
 
+//#define CALC_TYPE_SWITCH
+
 class dataStruc {
 public:        
     int64_t num_nodes = 0;
-    int64_t num_edges = 0; 
+    int64_t num_edges = 0;
+
+#ifdef CALC_TYPE_SWITCH
+	uint64_t switchCnt = 0;
+#endif
+
     bool weighted;
     bool directed;
     std::vector<float> property;

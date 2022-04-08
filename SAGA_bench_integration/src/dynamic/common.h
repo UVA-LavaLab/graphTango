@@ -38,7 +38,7 @@ typedef		I64			Idx;
 #define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
 #endif
 
-
+//#define		CALC_TYPE_SWITCH
 //#define		USE_CFH_FOR_DAH
 //#define		CALC_MEM_PER_EDGE
 //#define		ALLOC_FROM_NEXT_BLOCK
@@ -92,6 +92,12 @@ typedef struct {
 	u32 dst;
 	u32 loc;
 } DstLocPair;
+
+typedef enum {
+	VTYPE_1,
+	VTYPE_2,
+	VTYPE_3
+} VType;
 
 // Log2 for power of 2 integers
 //#define 	LOG2(x) 	__builtin_ctzl(x)
