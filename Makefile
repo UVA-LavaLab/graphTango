@@ -25,16 +25,13 @@ DYN_OBJ := $(addprefix $(OBJ_DIR)/$(DYN_PREFIX),$(notdir $(patsubst %.c,%.o,$(wi
 DYN_OBJ += $(addprefix $(OBJ_DIR)/$(DYN_PREFIX),$(notdir $(patsubst %.cc,%.o,$(wildcard $(DYN_DIR)/*.cc))))
 
 .PHONY : all
-all : $(OBJ_DIR) $(BIN_DIR) $(BIN_DIR)/errorExtractor frontEnd 
+all : $(OBJ_DIR) $(BIN_DIR) frontEnd 
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 	
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
-
-$(BIN_DIR)/errorExtractor : errorExtractor.cc
-	$(CXX) $(CXXFLAGS) $< -o $@
 
 frontEnd : $(DYN_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ -lm

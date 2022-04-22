@@ -23,7 +23,7 @@ GraphTango has been tested on Ubuntu 20.04 LTS with gcc 9.3.0. To build, run the
 
 ```
 $ git clone https://github.com/alifahmed/graphTango.git
-$ cd graphTango/SAGA_bench_integration/
+$ cd graphTango/
 $ make 
 ```
 
