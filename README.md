@@ -7,7 +7,7 @@ Please refer to [SAGA-Bench](https://github.com/abasak24/SAGA-Bench) for the com
 1. **src/dynamic/GraphTango.h**: Contains the implementation of the GraphTango API. Supports insertion/deletion of edges and vertices, both individual and batched.
 2. **src/dynamic/Vertex.h**: Implements the data structure partaining to a single vertex.
 3. **src/dynamic/LockFreePoolWithList.h**: Custom memory allocator optimized for GraphTango.
-4. **src/dynamic/common.h** Contains various configurations of GraphTango (e.g., different hashing mechanism or memory allocators). Default is the cache-friendly-hashing scheme and a custom memory allocator. This default configuration is the same as our submitted ICS paper.
+4. **src/dynamic/common.h** Contains various configurations of GraphTango (e.g., different hashing mechanism or memory allocators). Default is the cache-friendly-hashing scheme and a custom memory allocator.
 
 
 ## Input Datasets
