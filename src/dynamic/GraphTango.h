@@ -784,7 +784,7 @@ public:
 
 
 
-#ifdef USE_GT_BALANCED
+#if defined(USE_GT_BALANCED)
 
 	Vertex<Neigh>* vArray;
 
@@ -1614,7 +1614,7 @@ public:
 
 
 
-#if defined(USE_GT_BALANCED_MALLOC_STDMAP) || defined(USE_GT_BALANCED_ABSEIL) || defined(USE_GT_BALANCED_RHH)
+#if defined(USE_GT_BALANCED_MALLOC_STDMAP) || defined(USE_GT_BALANCED_ABSEIL) || defined(USE_GT_BALANCED_RHH) || defined(USE_GT_BALANCED_TSL_RHH)
 
 	Vertex<Neigh>* vArray;
 

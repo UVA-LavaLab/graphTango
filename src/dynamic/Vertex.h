@@ -17,6 +17,11 @@ typedef absl::flat_hash_map<u32, u32> graphite_hashmap;
 #elif defined(USE_GT_BALANCED_RHH)
 #include "robin_hood.h"
 typedef robin_hood::unordered_flat_map<u32, u32> graphite_hashmap;
+
+#elif defined(USE_GT_BALANCED_TSL_RHH)
+#include "robin_map.h"
+typedef tsl::robin_map<u32, u32> graphite_hashmap;
+
 #else
 typedef std::unordered_map<u32, u32, std::unordered_map<u32, u32>::hasher, std::unordered_map<u32, u32>::key_equal, custom_allocator< std::pair<const u32,u32>> > graphite_hashmap;
 #endif
@@ -907,6 +912,201 @@ public:
 
 
 #endif
+
+
+
+#if defined(USE_GT_BALANCED_TSL_RHH)
+
+#define		CACHE_LINE_SIZE			64
+
+template <typename Neigh>
+class alignas(CACHE_LINE_SIZE) EdgeArray{
+public:
+
+	const static u64 TH0 = ((CACHE_LINE_SIZE - sizeof(u32) - sizeof(u32)) / sizeof(Neigh));
+	const static u64 TH1 = HYBRID_HASH_PARTITION;
+
+	u32 degree = 0;
+	u32 capacity = TH0;
+
+	union {
+		struct {
+			Neigh neigh[TH0];
+		} type1;
+
+		struct {
+			Neigh* 			__restrict neighArr = nullptr;
+			graphite_hashmap* 	__restrict locMap = nullptr;
+		} type2_3;
+	} etype;
+
+	u8 __pad[CACHE_LINE_SIZE - sizeof(u32) - sizeof(u32) - sizeof(etype)];
+
+	void insertEdge(const Idx dstId, const Weight weight, u64& edgeCnt){
+		//First, check if needs expanding
+		if(__builtin_expect(degree == capacity, false)){
+			capacity = getNextPow2(capacity * 2);
+			Neigh* __restrict newPtr = (Neigh*)aligned_alloc(64, capacity * sizeof(Neigh));
+
+			if(degree <= TH0){	//Going from Type 1 to Type 2
+				memcpy(newPtr, etype.type1.neigh, degree * sizeof(Neigh));
+				etype.type2_3.locMap = nullptr;
+			}
+			else{				//Type 2 or 3
+				memcpy(newPtr, etype.type2_3.neighArr, degree * sizeof(Neigh));
+				free(etype.type2_3.neighArr);
+			}
+			etype.type2_3.neighArr = newPtr;
+
+			if((capacity > TH1) && (etype.type2_3.locMap == nullptr)){
+				//type 3 and locMap not yet allocated
+				etype.type2_3.locMap = (graphite_hashmap*)malloc(sizeof(graphite_hashmap));
+				new (etype.type2_3.locMap) graphite_hashmap();	//placement new
+			}
+		}
+
+		Neigh* __restrict currNeighArr;
+
+		if(capacity <= TH0){
+			currNeighArr = etype.type1.neigh;
+		}
+		else{
+			currNeighArr = etype.type2_3.neighArr;
+		}
+
+		//search and insert if not found
+		if(capacity <= TH1){
+			//Type 1 or 2, do linear search
+			for(u64 i = 0; i < degree; i++){
+				if(currNeighArr[i].node == dstId){
+					//found same edge, just update
+					currNeighArr[i].setWeight(weight);
+					return;
+				}
+			}
+		}
+		else{
+			//type 3, use hash table + adj list
+			graphite_hashmap* __restrict locMap = etype.type2_3.locMap;
+
+			const auto& iter = locMap->find(dstId);
+			if(iter != locMap->end()){
+				//found same edge, just update
+				currNeighArr[iter->second].setWeight(weight);
+				return;
+			}
+
+			//edge not found, must insert
+			locMap->insert({dstId, degree});
+		}
+		//not found, insert
+		currNeighArr[degree].node = dstId;
+		currNeighArr[degree].setWeight(weight);
+		degree++;
+		edgeCnt++;
+	}
+
+
+	void deleteEdge(const Idx dstId, u64& edgeCnt){
+		Neigh* __restrict currNeighArr;
+		Neigh* __restrict nn = nullptr;
+
+		if(capacity <= TH0){
+			currNeighArr = etype.type1.neigh;
+		}
+		else{
+			currNeighArr = etype.type2_3.neighArr;
+		}
+
+		//search
+		if(capacity <= TH1){
+			//Type 1 or 2, do linear search
+			for(u64 i = 0; i < degree; i++){
+				if(currNeighArr[i].node == dstId){
+					nn = currNeighArr + i;
+					break;
+				}
+			}
+			if(__builtin_expect(nn != nullptr, true)){
+				//edge found, delete
+				degree--;
+				edgeCnt--;
+				nn->node = currNeighArr[degree].node;
+				nn->setWeight(currNeighArr[degree].getWeight());
+			}
+			else{
+				//edge not found, nothing to do
+				return;
+			}
+		}
+		else{
+			//using hashed mode
+			graphite_hashmap* __restrict locMap = etype.type2_3.locMap;
+			const auto& iter = locMap->find(dstId);
+			if(iter == locMap->end()){
+				//not found, nothing to do
+				return;
+			}
+
+			//edge found
+			degree--;
+			edgeCnt--;
+			const u32 loc = iter->second;
+			locMap->erase(iter);
+			if(__builtin_expect(loc != degree, true)){
+				const u32 node = currNeighArr[degree].node;
+				//copy last entry
+				currNeighArr[loc] = currNeighArr[degree];
+				(*locMap)[node] = loc;
+				//const auto &nodeIter = locMap->find(node);
+				//nodeIter->second = loc;
+			}
+		}
+
+		if((capacity > TH0) && ((degree * 4) <= capacity)){
+			//time to reduce capacity
+			const u64 oldCap = capacity;
+			const u64 newCap = capacity / 2;
+			capacity = newCap;
+
+			Neigh* __restrict oldPtr = etype.type2_3.neighArr;
+			Neigh* __restrict newPtr;
+
+			if(newCap <= TH0){
+				//moving from type 2 or 3 to type 1
+				newPtr = etype.type1.neigh;
+				capacity = TH0;
+			}
+			else{
+				etype.type2_3.neighArr = (Neigh*)aligned_alloc(64, newCap * sizeof(Neigh));
+				newPtr = etype.type2_3.neighArr;
+			}
+
+			//copy old adjList and free
+			memcpy(newPtr, oldPtr, degree * sizeof(Neigh));
+			free(oldPtr);
+
+			if((oldCap > TH1) && (newCap <= TH1)){
+				//moving from type 3 to type 2/1
+				free(etype.type2_3.locMap);
+				etype.type2_3.locMap = nullptr;
+			}
+		}
+	}
+};
+
+
+template <typename Neigh>
+class Vertex{
+public:
+	 EdgeArray<Neigh>		inEdges;
+	 EdgeArray<Neigh>		outEdges;
+};
+
+
+#endif
+
+
 
 
 #ifdef USE_GT_BALANCED_ABSEIL

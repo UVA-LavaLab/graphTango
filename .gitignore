@@ -1,0 +1,12 @@
+.settings/
+.project
+.cproject
+bin/
+obj/
+results/
+collect.py
+profile.sh
+
+*.o
+frontEnd
+

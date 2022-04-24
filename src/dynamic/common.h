@@ -48,12 +48,13 @@ typedef		I64			Idx;
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
 //#define 	USE_HYBRID_HASHMAP_WITH_CFH
-#define 	USE_GT_BALANCED
+//#define 	USE_GT_BALANCED
 //#define 	USE_GT_BALANCED_TYPE3_ONLY
 //#define 	USE_GT_BALANCED_MALLOC
 //#define 	USE_GT_BALANCED_STDMAP
 //#define 	USE_GT_BALANCED_ABSEIL
 //#define 	USE_GT_BALANCED_RHH
+#define 	USE_GT_BALANCED_TSL_RHH
 //#define 	USE_GT_BALANCED_MALLOC_STDMAP
 //#define 	USE_GT_BALANCED_DYN_PARTITION
 //#define 	USE_GT_UPDATE
@@ -80,7 +81,8 @@ typedef		I64			Idx;
 			|| defined(USE_GT_BALANCED_MALLOC_STDMAP)									\
 			|| defined(USE_GT_BALANCED_DYN_PARTITION)									\
 			|| defined(USE_GT_BALANCED_ABSEIL)											\
-			|| defined(USE_GT_BALANCED_RHH)
+			|| defined(USE_GT_BALANCED_RHH)												\
+			|| defined(USE_GT_BALANCED_TSL_RHH)
 #define		HYBRID_HASH_PARTITION		32UL
 #endif
 
