@@ -14,7 +14,7 @@ typedef		int8_t		I8;
 typedef 	uint64_t	u64;
 typedef		int64_t		i64;
 typedef		uint32_t	u32;
-typedef		int64_t		i32;
+typedef		int32_t		i32;
 typedef		uint8_t		u8;
 typedef		int8_t		i8;
 
@@ -48,13 +48,13 @@ typedef		I64			Idx;
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
 //#define 	USE_HYBRID_HASHMAP_WITH_CFH
-//#define 	USE_GT_BALANCED
+#define 	USE_GT_BALANCED
 //#define 	USE_GT_BALANCED_TYPE3_ONLY
 //#define 	USE_GT_BALANCED_MALLOC
 //#define 	USE_GT_BALANCED_STDMAP
 //#define 	USE_GT_BALANCED_ABSEIL
 //#define 	USE_GT_BALANCED_RHH
-#define 	USE_GT_BALANCED_TSL_RHH
+//#define 	USE_GT_BALANCED_TSL_RHH
 //#define 	USE_GT_BALANCED_MALLOC_STDMAP
 //#define 	USE_GT_BALANCED_DYN_PARTITION
 //#define 	USE_GT_UPDATE

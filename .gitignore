@@ -6,4 +6,6 @@ obj/
 inputResource/
 *.o
 frontEnd
+Alg.csv
+Update.csv
 

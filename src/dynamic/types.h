@@ -13,6 +13,8 @@
 
 typedef int64_t NodeID;
 typedef int64_t Weight;
+//typedef int32_t NodeID;
+//typedef uint8_t Weight;
 typedef int PID;
 typedef std::unordered_map<NodeID, NodeID> MapTable;
 static const int32_t kRandSeed = 27491095;
@@ -122,27 +124,21 @@ struct Edge {
 	NodeID destination = -1;
 	Weight weight = -1;
 
-	bool sourceExists = false;
-	bool destExists = false;
+	bool sourceExists = true;
+	bool destExists = true;
 	bool isDelete = false;
 
-	//NodeID lastAssignedId;
-	Edge(NodeID s, NodeID d, Weight w, bool se, bool de) :
-			source(s), destination(d), weight(w), sourceExists(se), destExists(de) {
-	}
-	Edge(NodeID s, NodeID d, bool se, bool de) :
-			Edge(s, d, -1, se, de) {
-	}
 	Edge(NodeID s, NodeID d, Weight w) :
-			Edge(s, d, w, false, false) {
+		source(s), destination(d), weight(w) {
 	}
+
 	Edge(NodeID s, NodeID d) :
 			Edge(s, d, -1) {
 	}
 	Edge() {
 	}
 	Edge reverse() const {
-		Edge e(destination, source, weight, destExists, sourceExists);
+		Edge e(destination, source, weight);
 		e.isDelete = isDelete;
 		return e;
 	}

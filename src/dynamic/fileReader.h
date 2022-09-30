@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <fstream>
+#include <cstdio>
 
 #include "types.h"
 
@@ -85,4 +86,5 @@ void readBatchFromCSV(EdgeList& el, ifstream& in, int batchSize, int batch_id, b
         }             
     }
 }
+
 #endif  // FILEREADER_H_
