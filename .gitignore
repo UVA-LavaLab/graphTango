@@ -3,12 +3,7 @@
 .cproject
 bin/
 obj/
-results/
 inputResource/
-saved_results/
-collect.py
-profile.sh
-
 *.o
 frontEnd
 
