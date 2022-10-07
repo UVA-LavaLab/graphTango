@@ -86,7 +86,7 @@ void adListShared<T>::processMetaData(const Edge& e, bool source) {
         }
     }
     
-    if(exists){       
+    if(exists){
         stinger_int64_fetch_add(&num_edges, 1);                 
     }
     else{

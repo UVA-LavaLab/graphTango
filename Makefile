@@ -26,7 +26,7 @@ DYN_OBJ := $(addprefix $(OBJ_DIR)/$(DYN_PREFIX),$(notdir $(patsubst %.c,%.o,$(wi
 DYN_OBJ += $(addprefix $(OBJ_DIR)/$(DYN_PREFIX),$(notdir $(patsubst %.cc,%.o,$(wildcard $(DYN_DIR)/*.cc))))
 
 .PHONY : all
-all : $(OBJ_DIR) $(BIN_DIR) frontEnd 
+all : $(OBJ_DIR) $(BIN_DIR) frontEnd th1_benchmark
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
@@ -42,6 +42,9 @@ $(OBJ_DIR)/$(DYN_PREFIX)%.o : $(DYN_DIR)/%.cc $(DYN_HDR)
 
 $(OBJ_DIR)/$(DYN_PREFIX)%.o : $(DYN_DIR)/%.c $(DYN_HDR)
 	$(C) $(CFLAGS) -c $< -o $@
+
+th1_benchmark: th1_benchmark.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 .PHONY : clean
 
