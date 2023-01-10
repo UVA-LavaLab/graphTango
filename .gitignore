@@ -3,7 +3,11 @@
 .cproject
 bin/
 obj/
-inputResource/
+inputResource/*.csv
+inputResource/*.in
+inputResource/*.out
+inputResource/*.tot
+inputResource/*.del
 *.o
 frontEnd
 Alg.csv

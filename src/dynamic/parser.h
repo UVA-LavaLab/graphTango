@@ -7,7 +7,7 @@ struct cmd_args {
     int batch_size = 0;
     bool directed = false;
     bool weighted = false;
-    //int64_t num_nodes = 0;
+    int64_t num_nodes = 0;
     std::string filename;
     std::string type = "graphTango";
     std::string algorithm = "bfsdyn";

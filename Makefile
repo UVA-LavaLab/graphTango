@@ -49,6 +49,7 @@ th1_benchmark: th1_benchmark.cpp
 .PHONY : clean
 
 clean:
-	rm -f frontEnd
+	rm -rf frontEnd
+	rm -rf th1_benchmark
 	rm -rf $(OBJ_DIR)
 	rm -rf $(BIN_DIR)

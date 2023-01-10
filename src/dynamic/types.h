@@ -124,8 +124,8 @@ struct Edge {
 	NodeID destination = -1;
 	Weight weight = -1;
 
-	bool sourceExists = true;
-	bool destExists = true;
+	bool sourceExists = false;
+	bool destExists = false;
 	bool isDelete = false;
 
 	Edge(NodeID s, NodeID d, Weight w) :

@@ -124,9 +124,9 @@ cmd_args parse(int argc, char *argv[])
 		exit(-1);
 	    }
 	    break;
-//	case 'n':
-//	    args.num_nodes = atoi(optarg);
-//	    break;
+	case 'n':
+	    args.num_nodes = atoi(optarg);
+	    break;
 	case 't':
 	    args.num_threads = atoi(optarg);    
 	    break;
@@ -170,11 +170,11 @@ cmd_args parse(int argc, char *argv[])
         printUsage();
         exit(0);
     }    
-//    if ((args.num_nodes == 0) /*&& (args.type == "stinger")*/) {
-//	std::cout << "ERROR! Every data structure requires max number of nodes to be specified" << std::endl;
-//	printUsage();
-//	exit(-1);
-//    }
+    if ((args.num_nodes == 0) /*&& (args.type == "stinger")*/) {
+        std::cout << "ERROR! Every data structure requires max number of nodes to be specified" << std::endl;
+        printUsage();
+        exit(-1);
+    }
 
     std::array<std::string, 4> reqs = {
 	"ssspdyn", "ssspfromscratch", "sswpdyn", "sswpfromscratch"};
