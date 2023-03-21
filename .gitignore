@@ -3,6 +3,7 @@
 .cproject
 bin/
 obj/
+gapbs_outputs/
 inputResource/*.csv
 inputResource/*.in
 inputResource/*.out
@@ -12,4 +13,5 @@ inputResource/*.del
 frontEnd
 Alg.csv
 Update.csv
+update.csv
 th1_benchmark

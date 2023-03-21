@@ -39,11 +39,12 @@ bool supportedDataStruc(const std::string &type)
 
 void printUsage()
 {
-    std::cout << "Arguments:  -f filename -b batchSize -w weighted"
+    std::cout << "Arguments:  -f inputfilename -o outputfilename -b batchSize -w weighted"
 	" -d directed -s dataStructure -n numNodes -a algorithm\n"
 	      << "First four arguments required\n"
-	      << "-f filename       should end in .csv\n"
-	      << "-b batchSize      suggestion = 100K\n"
+	      << "-f inputfilename should end in .csv or .el\n"
+	      << "-o outputfilename \n"
+	      << "-b batchSize      suggestion = 100000\n"
 	      << "-w weighted       0=unweighted   1=weighted\n"
 	      << "-d directed       0=undirected   1=directed\n"
 	      << "-s dataStructure  data structure to use (default: graphTango)\n"
@@ -78,7 +79,7 @@ cmd_args parse(int argc, char *argv[])
 {
     cmd_args args;
     int opt = 0;
-    while(-1 != (opt = getopt(argc, argv, "f:b:w:d:s:n:a:t:h"))) {
+    while(-1 != (opt = getopt(argc, argv, "f:o:b:w:d:s:n:a:t:h"))) {
         switch(opt) {
 	case 'f':               
 //	    if (getSuffix(optarg) != ".csv") {
@@ -88,6 +89,9 @@ cmd_args parse(int argc, char *argv[])
 	    args.flags |= 8;
 	    args.filename = optarg;
 	    break;
+        case 'o':
+            args.outFileName = optarg;
+            break;
 	case 'b':
 	    args.flags |= 4;
 	    args.batch_size = atoi(optarg);

@@ -34,10 +34,13 @@ int main(int argc, char *argv[]) {
 
 	Timer t;
 	dataStruc *ds = createDataStruc(opts.type, opts.weighted, opts.directed, opts.num_nodes, opts.num_threads);
-	Algorithm alg(opts.algorithm, ds, opts.type);
-
-	ofstream updF("Update.csv");
-
+	Algorithm alg(opts.algorithm, ds, opts.type); 
+	std::string outputFile;
+        if (!opts.outFileName.empty())
+		outputFile = opts.outFileName;
+	else
+		outputFile = "update.csv";
+	ofstream updF(opts.outFileName);
 	while (!file.eof()) {
 		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
 
@@ -48,7 +51,9 @@ int main(int argc, char *argv[]) {
 		updF << t.Seconds() << endl;
 		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
 
+#ifndef ENABLE_PROFILING /*No need to run algorithm if profiling non algorithm specific things, e.g., type mapping */
 		alg.performAlg();
+#endif
 
 		batch_id++;
 	}
@@ -92,11 +97,12 @@ int main(int argc, char *argv[]) {
 //	updF.close();
 
 	ds->print();
+	if(ds){
+		delete ds;
+	}
+
 #ifdef CALC_EDGE_TOUCHED
 	cout << "EDGES TOUCHED: " << g_edge_touched << endl;
-#endif
-#ifdef CALC_TYPE_SWITCH
-	cout << "Switch count: " << ds->switchCnt << endl;
 #endif
 }
 

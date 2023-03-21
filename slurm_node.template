@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=24
+#SBATCH --ntasks-per-node=1
+#SBATCH --reservation=fas9nw_61
+#SBATCH --mem=0
+#SBATCH --nodelist=${FULCRUM_NODE}
+#SBATCH --partition=main,gpu
+#SBATCH --job-name="gtango"
+#SBATCH --error="err_slurm.log"
+#SBATCH --output="out_slurm.log"
+
+module load gcc
+
+../profile.sh

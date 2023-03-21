@@ -9,6 +9,7 @@ struct cmd_args {
     bool weighted = false;
     int64_t num_nodes = 0;
     std::string filename;
+    std::string outFileName;
     std::string type = "graphTango";
     std::string algorithm = "bfsdyn";
     int8_t flags = 0;

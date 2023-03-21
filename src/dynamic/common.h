@@ -38,12 +38,22 @@ typedef		I64			Idx;
 #define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
 #endif
 
+#define ENABLE_PROFILING
+
 //#define		CALC_TYPE_SWITCH
 //#define		USE_CFH_FOR_DAH
 //#define		CALC_MEM_PER_EDGE
 //#define		ALLOC_FROM_NEXT_BLOCK
 //#define 	CALC_EDGE_TOUCHED
 //#define 	USE_HUGEPAGE
+
+#ifdef ENABLE_PROFILING
+#define		CALC_TYPE_SWITCH
+#define		CALC_MEM_PER_EDGE
+//#define 	CALC_EDGE_TOUCHED	/* do it later as it requires running the algo */
+#define		CALC_STATIC_TYPE_MAPPING
+#define		CALC_DYNNAMIC_TYPE_MAPPING
+#endif
 
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
@@ -83,7 +93,7 @@ typedef		I64			Idx;
 			|| defined(USE_GT_BALANCED_ABSEIL)											\
 			|| defined(USE_GT_BALANCED_RHH)												\
 			|| defined(USE_GT_BALANCED_TSL_RHH)
-#define		HYBRID_HASH_PARTITION		32UL
+#define		HYBRID_HASH_PARTITION		64UL
 #endif
 
 #ifdef		USE_SORTED_EDGES

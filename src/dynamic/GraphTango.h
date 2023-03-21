@@ -791,12 +791,15 @@ public:
 	//VertexArray<Neigh> vArray;
 	const int num_threads;
 
-#ifdef CALC_TYPE_SWITCH
+#if defined(CALC_TYPE_SWITCH) || defined(CALC_DYNNAMIC_TYPE_MAPPING)
 	typedef struct{
 		u64 edgeCnt = 0;
 		u64 nodeCnt = 0;
 		u64 switchCnt = 0;
-		u8 pad[40];
+		u64 type1 = 0;
+		u64 type2 = 0;
+		u64 type3 = 0;
+		u8  pad[16];
 	} ThreadInfo;
 #else
 	typedef struct{
@@ -840,7 +843,46 @@ public:
 		affected.fill(false);
 	}
 
-	~GraphTango(){
+	virtual ~GraphTango(){
+#ifdef CALC_STATIC_TYPE_MAPPING
+		u64 type1 = 0;
+		u64 type2 = 0;
+		u64 type3 = 0;
+		for(u64 i = 0; i < num_nodes; i++){
+			u64 numNeigh = in_degree(i);
+			if(numNeigh <= EdgeArray<Neigh>::TH0){
+				type1++;
+			}
+			else if(numNeigh <= EdgeArray<Neigh>::TH1){
+				type2++;
+			}
+			else{
+				type3++;
+			}
+			numNeigh = out_degree(i);
+			if(numNeigh <= EdgeArray<Neigh>::TH0){
+				type1++;
+			}
+			else if(numNeigh <= EdgeArray<Neigh>::TH1){
+				type2++;
+			}
+			else{
+				type3++;
+			}
+		}
+		cout << "Static type mapping: \n\tType1: " << type1 << "\t\tType2: " << type2 << "\t\tType3: " << type3 << endl;
+#endif
+#ifdef CALC_DYNNAMIC_TYPE_MAPPING
+		u64 dynType1 = 0;
+		u64 dynType2 = 0;
+		u64 dynType3 = 0;
+		for(u64 i = 0; i < num_threads; i++){
+			dynType1 += thInfo[i].type1;
+			dynType2 += thInfo[i].type2;
+			dynType3 += thInfo[i].type3;
+		}
+		cout << "Dynamic type mapping: \n\tType1: " << dynType1 << "\t\tType2: " << dynType2 << "\t\tType3: " << dynType3 << endl;
+#endif
 #ifdef CALC_TYPE_SWITCH
 		u32 switchCnt = 0;
 		for(u64 i = 0; i < num_threads; i++){
@@ -889,10 +931,10 @@ public:
 
 					#ifdef CALC_TYPE_SWITCH
 					VType initType = VType::VTYPE_3;
-					if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH0){
+					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
 						initType = VType::VTYPE_1;
 					}
-					else if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH1){
+					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
 						initType = VType::VTYPE_2;
 					}
 					#endif
@@ -908,14 +950,26 @@ public:
 
 					#ifdef CALC_TYPE_SWITCH
 					VType finType = VType::VTYPE_3;
-					if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH0){
+					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
 						finType = VType::VTYPE_1;
 					}
-					else if(vArray[src].outEdges.capacity <= vArray[src].outEdges.TH1){
+					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
 						finType = VType::VTYPE_2;
 					}
 					if(initType != finType){
 						thInfo[actualTh].switchCnt++;
+					}
+					#endif
+
+					#ifdef CALC_DYNNAMIC_TYPE_MAPPING
+					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
+						thInfo[actualTh].type1++;
+					}
+					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
+						thInfo[actualTh].type2++;
+					}
+					else{
+						thInfo[actualTh].type3++;
 					}
 					#endif
 				}
@@ -929,10 +983,10 @@ public:
 
 					#ifdef CALC_TYPE_SWITCH
 					VType initType = VType::VTYPE_3;
-					if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH0){
+					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
 						initType = VType::VTYPE_1;
 					}
-					else if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH1){
+					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
 						initType = VType::VTYPE_2;
 					}
 					#endif
@@ -949,14 +1003,26 @@ public:
 
 					#ifdef CALC_TYPE_SWITCH
 					VType finType = VType::VTYPE_3;
-					if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH0){
+					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
 						finType = VType::VTYPE_1;
 					}
-					else if(vArray[dst].inEdges.capacity <= vArray[dst].inEdges.TH1){
+					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
 						finType = VType::VTYPE_2;
 					}
 					if(initType != finType){
 						thInfo[actualTh].switchCnt++;
+					}
+					#endif
+
+					#ifdef CALC_DYNNAMIC_TYPE_MAPPING
+					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
+						thInfo[actualTh].type1++;
+					}
+					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
+						thInfo[actualTh].type2++;
+					}
+					else{
+						thInfo[actualTh].type3++;
 					}
 					#endif
 				}
@@ -1007,10 +1073,6 @@ public:
 			thInfo[i].edgeCnt = 0;
 			num_nodes += thInfo[i].nodeCnt;
 			thInfo[i].nodeCnt = 0;
-#ifdef CALC_TYPE_SWITCH
-			switchCnt += thInfo[i].switchCnt;
-			thInfo[i].switchCnt = 0;
-#endif
 		}
 		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
 	}
