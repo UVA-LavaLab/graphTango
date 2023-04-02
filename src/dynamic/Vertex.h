@@ -155,15 +155,16 @@ public:
 			if(degree <= TH0){	//Going from Type 1 to Type 2
 				memcpy(newPtr, etype.type1.neigh, degree * sizeof(Neigh));
 				etype.type2_3.mapArr = nullptr;
+				etype.type2_3.neighArr = newPtr;
 			}
 			else{				//Type 2 or 3
 				memcpy(newPtr, etype.type2_3.neighArr, degree * sizeof(Neigh));
 				globalAllocator.freePow2(etype.type2_3.neighArr, capacity / 2 * sizeof(Neigh));
+				etype.type2_3.neighArr = newPtr;
+				//Grow hash table if needed
+				rebuildHashTable(capacity / 2, capacity);
 			}
-			etype.type2_3.neighArr = newPtr;
-
-			//Grow hash table if needed
-			rebuildHashTable(capacity / 2, capacity);
+			
 		}
 
 		Neigh* __restrict currNeighArr;
