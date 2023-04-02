@@ -48,12 +48,13 @@ int main(int argc, char *argv[]) {
 		updF << t.Seconds() << endl;
 		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
 
-
 		batch_id++;
 	}
 	updF.close();
 
+#ifndef ENABLE_PROFILING
 	alg.performAlg();
+#endif
 //	while (!file.eof()) {
 //		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
 //		ds->update(el);
@@ -91,11 +92,12 @@ int main(int argc, char *argv[]) {
 //	updF.close();
 
 	ds->print();
+	if(ds){
+		delete ds;
+	}
+
 #ifdef CALC_EDGE_TOUCHED
 	cout << "EDGES TOUCHED: " << g_edge_touched << endl;
-#endif
-#ifdef CALC_TYPE_SWITCH
-	cout << "Switch count: " << ds->switchCnt << endl;
 #endif
 }
 
