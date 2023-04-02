@@ -11,7 +11,7 @@ export OMP_PROC_BIND=close
 #export OMP_PLACES={2}:64:1
 export OMP_PLACES=threads
 
-dataDir=./inputResource/
+dataDir=../
 #STRUCTURES=(adListChunked adListShared degAwareRHH stinger)
 #STRUCTURES=(graphite adListChunked adListShared degAwareRHH stinger)
 STRUCTURES=(graphTango)
@@ -32,10 +32,7 @@ ALGORITHMS=(
 # Max num_nodes to initialize for each dataset
 declare -A DATASETS
 DATASETS=(
-       [LiveJournal.csv]=4847571       
-       [orkut.csv]=3072441       
-       [wiki-topcats.csv]=1791489
-       [WikiTalk.csv]=2394385
+       [road.el]=23947347  
 #		[rmat_1_1.csv]=1048576
 #		[rmat_1_2.csv]=1048576
 #		[rmat_1_4.csv]=1048576

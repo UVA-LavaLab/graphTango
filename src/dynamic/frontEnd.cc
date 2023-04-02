@@ -48,13 +48,12 @@ int main(int argc, char *argv[]) {
 		updF << t.Seconds() << endl;
 		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
 
-		alg.performAlg();
 
 		batch_id++;
 	}
 	updF.close();
 
-
+	alg.performAlg();
 //	while (!file.eof()) {
 //		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
 //		ds->update(el);
