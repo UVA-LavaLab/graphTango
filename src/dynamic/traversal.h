@@ -796,7 +796,7 @@ public:
 				_start = _ds->vArray[_node].inEdges.etype.type1.neigh;
 			}
 			else{
-				_start = _ds->vArray[_node].inEdges.etype.type3.neighArr;
+				_start = _ds->vArray[_node].inEdges.etype.type2.neighArr;
 			}
 			_size = _ds->vArray[_node].inEdges.degree;
 		}
@@ -805,7 +805,7 @@ public:
 				_start = _ds->vArray[_node].outEdges.etype.type1.neigh;
 			}
 			else{
-				_start = _ds->vArray[_node].outEdges.etype.type3.neighArr;
+				_start = _ds->vArray[_node].outEdges.etype.type2.neighArr;
 			}
 			_size = _ds->vArray[_node].outEdges.degree;
 		}
