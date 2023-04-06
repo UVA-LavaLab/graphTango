@@ -63,6 +63,7 @@ public:
 	}
 
 	void* allocPow2(u64 size){
+		assert(isPowOf2(size));
 		return allocLog2(getPow2Log2(size));
 	}
 
@@ -81,6 +82,7 @@ public:
 	}
 
 	void freePow2(void* __restrict ptr, u64 size){
+		assert(isPowOf2(size));
 		freeLog2(ptr, getPow2Log2(size));
 	}
 

@@ -32,8 +32,8 @@ ALGORITHMS=(
 # Max num_nodes to initialize for each dataset
 declare -A DATASETS
 DATASETS=(
-		#[orkut.el]=3072441
-       [twitter.el]=61578415   
+		[orkut.el]=3072441
+    #[twitter.el]=61578415   
 #		[rmat_1_1.csv]=1048576
 #		[rmat_1_2.csv]=1048576
 #		[rmat_1_4.csv]=1048576

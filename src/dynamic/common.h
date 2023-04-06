@@ -38,7 +38,7 @@ typedef		I64			Idx;
 #define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
 #endif
 
-//#define ENABLE_PROFILING
+#define ENABLE_PROFILING
 
 //#define		CALC_TYPE_SWITCH
 //#define		USE_CFH_FOR_DAH
@@ -110,6 +110,10 @@ typedef enum {
 	VTYPE_2,
 	VTYPE_3
 } VType;
+
+constexpr bool isPowOf2(u64 num){
+	return !((num - 1) & num);
+}
 
 // Log2 for power of 2 integers
 //#define 	LOG2(x) 	__builtin_ctzl(x)

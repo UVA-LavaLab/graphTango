@@ -39,6 +39,9 @@ int main(int argc, char *argv[]) {
 	ofstream updF("Update.csv");
 
 	while (!file.eof()) {
+		if(batch_id == 3){
+			break;
+		}
 		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
 
 		t.Start();
@@ -50,7 +53,8 @@ int main(int argc, char *argv[]) {
 
 		batch_id++;
 	}
-	updF.close();
+	file.close();
+	
 
 #ifndef ENABLE_PROFILING
 	alg.performAlg();
@@ -65,36 +69,44 @@ int main(int argc, char *argv[]) {
 //
 //	file.close();
 
-//	stringstream ss;
-//	ss << opts.filename << ".del";
-//	file.open(ss.str());
-//	if (!file.is_open()) {
-//		cout << "Couldn't open file " << ss.str() << endl;
-//		exit(-1);
-//	}
-//
-//	batch_id = 0;
-//	while (!file.eof()) {
-//		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
-//
-//		t.Start();
-//		ds->update(el);
-//		t.Stop();
-//
-//		updF << t.Seconds() << endl;
-//		//cout << "del," << ((ds->num_edges * 1.0) / ds->num_nodes) << endl;
-//		cout << "Deleted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
-//
-//		alg.performAlg();
-//
-//		batch_id++;
-//	}
-//	updF.close();
+	stringstream ss;
+	ss << opts.filename << ".del";
+	file.open(ss.str());
+	if (!file.is_open()) {
+		cout << "Couldn't open file for delete" << ss.str() << endl;
+		exit(-1);
+	}
+
+	batch_id = 0;
+	el.clear();
+	while (!file.eof()) {
+		if(batch_id == 3){
+			break;
+		}
+		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
+
+		cout << "here" << endl;
+
+		t.Start();
+		ds->update(el);
+		t.Stop();
+
+		updF << t.Seconds() << endl;
+		//cout << "del," << ((ds->num_edges * 1.0) / ds->num_nodes) << endl;
+		cout << "Deleted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
+
+		//alg.performAlg();
+
+		batch_id++;
+	}
+	file.close();
+	
 
 	ds->print();
 	if(ds){
 		delete ds;
 	}
+	updF.close();
 
 #ifdef CALC_EDGE_TOUCHED
 	cout << "EDGES TOUCHED: " << g_edge_touched << endl;

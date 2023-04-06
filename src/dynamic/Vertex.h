@@ -87,46 +87,45 @@ class alignas(CACHE_LINE_SIZE) EdgeArray{
 
 private:
 	void rebuildHashTable(u64 oldCap, u64 newCap){
-		// if(oldCap > TH1){
-		// 	//free old map
-		// 	globalAllocator.freePow2(etype.type3.mapArr, oldCap * 2 * sizeof(DstLocPair));
-		// 	etype.type3.mapArr = nullptr;
-		// 	etype.type3.currMapSz = 0;
-		// }
-
 		//if newCap == power of 2
 		if(!(newCap & (newCap-1))){
-			//free old map
-			globalAllocator.freePow2(etype.type3.mapArr, oldCap * 2 * sizeof(DstLocPair));
-			etype.type3.mapArr = nullptr;
-			
+			if (etype.type3.mapCapacity) {
+				globalAllocator.freePow2(etype.type3.mapArr, etype.type3.mapCapacity * sizeof(DstLocPair));
+			}
 			//allocate new map
-			etype.type3.mapArr = (DstLocPair*)globalAllocator.allocate(newCap * 2 * sizeof(DstLocPair));
 			etype.type3.mapCapacity = newCap * 2;
+			etype.type3.mapArr = (DstLocPair*)globalAllocator.allocate(etype.type3.mapCapacity * sizeof(DstLocPair));
 			DstLocPair* __restrict locMap = etype.type3.mapArr;
-			memset(locMap, -1, newCap * 2 * sizeof(DstLocPair));
+			memset(locMap, -1, etype.type3.mapCapacity * sizeof(DstLocPair));
 
-			const u32 mask = newCap * 2 - 1;
+			const u32 mask = etype.type3.mapCapacity - 1;
 			
+			assert(degree < etype.type3.mapCapacity);
+
 			//add existing nodes to hash
-			for (auto nn : etype.type3.blockList) {
-				//const Neigh* __restrict nn = etype.type3.neighArr;
-				for(u64 i = 0; i < degree; i++){
+			u64 loc = 0;
+			u32 blockNum = degree / BLOCK_SIZE;
+			assert(degree % BLOCK_SIZE == 0);
+			for (u32 j = 0; j < blockNum; j++) {
+				const Neigh* nn = etype.type3.blockList[j];
+				for(u64 i = 0; i < BLOCK_SIZE; i++){
 					const u32 dst = nn[i].node;
+					assert((i32)dst >= 0);
 					u32 idx = dst & mask;
 					while(true){
 						if(locMap[idx].dst == FLAG_EMPTY_SLOT){
 							//found insertion point
 							locMap[idx].dst = dst;
-							locMap[idx].loc = i;
+							locMap[idx].loc = loc;
 							break;
 						}
 						//move on
 						idx++;
-						if(idx == (newCap * 2)){
+						if(idx == (etype.type3.mapCapacity)){
 							idx = 0;
 						}
 					}
+					loc++;
 				}
 			}
 		}
@@ -163,50 +162,49 @@ public:
 	u8 __pad[CACHE_LINE_SIZE - sizeof(u32) - sizeof(u32) - sizeof(etype)];
 
 	void insertEdge(const Idx dstId, const Weight weight, u64& edgeCnt){
-		//cout << "I am stuck" << endl;
+		assert(dstId >= 0);
 		//First, check if needs expanding
 		if(__builtin_expect(degree == capacity, false)){
-			capacity = getNextPow2(capacity * 2);
 
-			if(degree <= TH0){	//Type 1 => Type 2
-				//cout << "in T2" << endl;
+			if(degree == TH0){	//Type 1 => Type 2
+				capacity = getNextPow2(capacity * 2);
+				//cout << "T1 => T2: " << degree << "\t" << capacity << endl;
 				Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(capacity * sizeof(Neigh));
 				memcpy(newPtr, etype.type1.neigh, degree * sizeof(Neigh));
 				etype.type2.neighArr = newPtr;
-				//cout << "Not" << endl;
 			}
-			else if(degree <= TH1 && capacity <= TH1) { // Type 2 => Type 2
-				//cout << "in T2" << endl;
+			else if((degree * 2) <= TH1) { // Type 2 => Type 2
+				capacity = capacity * 2;
 				Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(capacity * sizeof(Neigh));
 				memcpy(newPtr, etype.type2.neighArr, degree * sizeof(Neigh));
 				globalAllocator.freePow2(etype.type2.neighArr, degree * sizeof(Neigh));
 				etype.type2.neighArr = newPtr;
-				//cout << "Not" << endl;
 			}
-			else if(degree == TH1 && capacity > TH1){ // Type 2 => Type 3
-				//cout << "in T2 -> T3" << endl;
+			else if(degree == TH1){ // Type 2 => Type 3
+				capacity = capacity + BLOCK_SIZE;
 				new (&etype.type3.blockList) vector<Neigh*>();
-
+//				Neigh* newPtrr = (Neigh*)globalAllocator.allocPow2(BLOCK_SIZE * sizeof(Neigh));
+//				memcpy(newPtrr, etype.type2.neighArr, degree * sizeof(Neigh));
+//				globalAllocator.freePow2(etype.type2.neighArr, degree * sizeof(Neigh));
+//				etype.type3.blockList.push_back(newPtrr);
 				etype.type3.blockList.push_back(etype.type2.neighArr);
+				assert(etype.type2.neighArr[0].node >= 0);
 				Neigh* newPtr = (Neigh*)globalAllocator.allocPow2(BLOCK_SIZE * sizeof(Neigh));
 				etype.type3.blockList.push_back(newPtr);
 				etype.type3.mapCapacity = 0;
 				//Grow hash table if needed
-				rebuildHashTable(degree, degree + BLOCK_SIZE);
-				//cout << "Not" << endl;
+				rebuildHashTable(degree, capacity);
 			} 
 			else { // Type 3 => Type 3
-				//cout << "in T3" << endl;
+				capacity = capacity + BLOCK_SIZE;
 				Neigh* newPtr = (Neigh*)globalAllocator.allocPow2(BLOCK_SIZE * sizeof(Neigh));
 				etype.type3.blockList.push_back(newPtr);
 				//Grow hash table if needed
-				rebuildHashTable(degree, degree + BLOCK_SIZE);
-				//cout << "Not" << endl;
+				rebuildHashTable(degree, capacity);
 			}
-			
 		}
 
-		Neigh* currNeighArr;
+		Neigh* __restrict currNeighArr;
 
 		if(capacity <= TH0){
 			currNeighArr = etype.type1.neigh;
@@ -217,31 +215,28 @@ public:
 
 		//search and insert if not found
 		if(capacity <= TH1){
-			//cout << "Starting linear search" << endl;
 			//Type 1 or 2, do linear search
 			for(u64 i = 0; i < degree; i++){
 				if(currNeighArr[i].node == dstId){
 					//found same edge, just update
 					currNeighArr[i].setWeight(weight);
+					assert(false);
 					return;
 				}
 			}
 			//not found, insert
 			currNeighArr[degree].node = dstId;
 			currNeighArr[degree].setWeight(weight);
-			//cout << "I am done doing linear serach" << endl;
 		}
 		else{
 			//type 3, use hash table + adj list
 			u32 idx = dstId & (etype.type3.mapCapacity - 1);
 			DstLocPair* __restrict locMap = etype.type3.mapArr;
 			DstLocPair* __restrict insLoc = nullptr;
-			cout << "I am the problem. It's me!" << endl;
 			//probe = 0;
 			while(true){
 				//probe++;
 				if(locMap[idx].dst == FLAG_EMPTY_SLOT){
-					cout << "Edge not found" << endl;
 					//edge not found, insert
 					if(insLoc){
 						locMap = insLoc;	//points to the first tomb stone found
@@ -251,16 +246,16 @@ public:
 					break;
 				}
 				else if((locMap[idx].dst == FLAG_TOMB_STONE) && (insLoc == nullptr)){
-					cout << "Edge bl found" << endl;
 					insLoc = locMap + idx;
 				}
 				else if(locMap[idx].dst == dstId){
-					cout << "edge found, update" << endl;
 					//edge found, update weight
 					u32 blockId = locMap[idx].loc / BLOCK_SIZE;
 					u32 blockOffset =  locMap[idx].loc % BLOCK_SIZE;
+					assert(etype.type3.blockList[blockId][blockOffset].node == dstId);
 					etype.type3.blockList[blockId][blockOffset].setWeight(weight);
 					//probingDist[probe]++;
+					assert(false);
 					return;
 				}
 				//move on
@@ -272,120 +267,134 @@ public:
 			//not found, insert
 			u32 blockId = degree / BLOCK_SIZE;
 			u32 blockOffset =  degree % BLOCK_SIZE;
-			cout << blockId << "\t" << blockOffset << endl;
 			etype.type3.blockList[blockId][blockOffset].node = dstId;
 			etype.type3.blockList[blockId][blockOffset].setWeight(weight);
-			cout << etype.type3.blockList.size() << endl;
+			assert(etype.type3.blockList[blockId][blockOffset].node >= 0);
+			assert(etype.type3.blockList[etype.type3.blockList.size()-1][0].node >= 0);
 		}
 		degree++;
 		edgeCnt++;
-		cout << "Here" << endl;
-		//cout << "Finished inserting" << endl;
 	}
 
 
 	void deleteEdge(const Idx dstId, u64& edgeCnt){
-		Neigh* __restrict currNeighArr = nullptr;
-		Neigh* __restrict nn = nullptr;
+		assert(dstId >= 0);
+		//search
+		if(capacity <= TH0){	//Type 1
+			Neigh* __restrict currNeighArr = etype.type1.neigh;
+			for(u64 i = 0; i < degree; i++){
+				if(currNeighArr[i].node == dstId){
+					//edge found, delete
+					degree--;
+					edgeCnt--;
+					currNeighArr[i] = currNeighArr[degree];
+					return;
+				}
+			}			
+		}
+		if(capacity <= TH1){	//Type2
+			Neigh* __restrict currNeighArr = etype.type2.neighArr;
+			for(u64 i = 0; i < degree; i++){		
+				if(currNeighArr[i].node == dstId){
+					//edge found, delete
+					degree--;
+					edgeCnt--;
+					currNeighArr[i] = currNeighArr[degree];
 
-		// if(capacity <= TH0){
-		// 	currNeighArr = etype.type1.neigh;
-		// } 
-		// else if (capacity <= TH1){
-		// 	currNeighArr = etype.type2.neighArr;
-		// } 
+					if(degree * 4 <= capacity){
+						//reduce capacity
+						u64 newCap = capacity / 2;
+						if(newCap <= TH0){
+							//T2 => T1
+							memcpy(etype.type1.neigh, currNeighArr, degree * sizeof(Neigh));
+							globalAllocator.freePow2(currNeighArr, capacity * sizeof(Neigh));
+							capacity = TH0;
+						}
+						else{
+							//T2 => T2
+							etype.type2.neighArr = (Neigh*)globalAllocator.allocPow2(newCap * sizeof(Neigh));
+							memcpy(etype.type2.neighArr, currNeighArr, degree * sizeof(Neigh));
+							globalAllocator.freePow2(currNeighArr, capacity * sizeof(Neigh));
+							capacity = newCap;
+						}
+					}
+					return;
+				}
+			}
+		}
+		else{	//Type 3
+			//using hashed mode
+			u32 idx = dstId & (etype.type3.mapCapacity - 1);
+			DstLocPair* __restrict locMap = etype.type3.mapArr;
+			while(true){
+				if(locMap[idx].dst == dstId){
+					//edge found, delete
+					degree--;
+					edgeCnt--;
+					//delSucc++;
+					locMap[idx].dst = FLAG_TOMB_STONE; 				//invalidate previous hash-table entry
 
-		// //search
-		// if(capacity <= TH1){
-		// 	//Type 1 or 2, do linear search
-		// 	for(u64 i = 0; i < degree; i++){
-		// 		if(currNeighArr[i].node == dstId){
-		// 			nn = currNeighArr + i;
-		// 			break;
-		// 		}
-		// 	}
-		// 	if(__builtin_expect(nn != nullptr, true)){
-		// 		//edge found, delete
-		// 		degree--;
-		// 		edgeCnt--;
-		// 		nn->node = currNeighArr[degree].node;
-		// 		nn->setWeight(currNeighArr[degree].getWeight());
-		// 	}
-		// 	else{
-		// 		//edge not found, nothing to do
-		// 		return;
-		// 	}
-		// }
-		// else{
-		// 	//using hashed mode
-		// 	u32 idx = dstId & (etype.type3.mapCapacity - 1);
-		// 	DstLocPair* __restrict locMap = etype.type3.mapArr;
-		// 	while(true){
-		// 		if(locMap[idx].dst == dstId){
-		// 			//edge found, delete
-		// 			degree--;
-		// 			edgeCnt--;
-		// 			//delSucc++;
-		// 			locMap[idx].dst = FLAG_TOMB_STONE; 				//invalidate previous hash-table entry
+					const u32 loc = locMap[idx].loc;
+					if(__builtin_expect(loc != degree, true)){		//nothing to do if last entry is removed
+						u32 currBlockId = loc / BLOCK_SIZE;
+						u32 currBlockOffset =  loc % BLOCK_SIZE;
+						u32 lastBlockId = degree / BLOCK_SIZE;
+						u32 lastBlockOffset = degree % BLOCK_SIZE;
 
-		// 			const u32 loc = locMap[idx].loc;
-		// 			//u32 blockId = locMap[idx].loc / BLOCK_SIZE;
-		// 			//u32 blockOffset =  locMap[idx].loc % BLOCK_SIZE;
-		// 			if(__builtin_expect(loc != degree, true)){		//nothing to do if last entry is removed
-		// 				const u32 node = currNeighArr[degree].node;
-		// 				//copy last entry
-		// 				currNeighArr[loc] = currNeighArr[degree];
+						const u32 node = etype.type3.blockList[lastBlockId][lastBlockOffset].node;
+						//assert((i32)node >= 0);
+						if((i32)node < 0){
+							cerr << "bla" << endl;
+							for(u64 i = 0; i < BLOCK_SIZE; i++){
+								cout << etype.type3.blockList[1][i] << " ";
+							}
+							cout << endl;
+						}
+						//copy last entry
+						etype.type3.blockList[currBlockId][currBlockOffset] = etype.type3.blockList[lastBlockId][lastBlockOffset];
 
-		// 				//point to correct location of the swapped entry
-		// 				u32 idxMoved = node & (etype.type3.mapCapacity - 1);
-		// 				while(locMap[idxMoved].dst != node){
-		// 					idxMoved++;
-		// 					if(idxMoved == (etype.type3.mapCapacity)){
-		// 						idxMoved = 0;
-		// 					}
-		// 				}
-		// 				locMap[idxMoved].loc = loc;
-		// 			}
-		// 			break;
-		// 		}
-		// 		else if (locMap[idx].dst == FLAG_EMPTY_SLOT) {
-		// 			//edge not found, return
-		// 			return;
-		// 		}
-		// 		//move on
-		// 		idx++;
-		// 		if(idx == (capacity * 2)){
-		// 			idx = 0;
-		// 		}
-		// 	}
-		// }
+						//point to correct location of the swapped entry
+						u32 idxMoved = node & (etype.type3.mapCapacity - 1);
+						while(locMap[idxMoved].dst != node){
+							idxMoved++;
+							if(idxMoved == (etype.type3.mapCapacity)){
+								idxMoved = 0;
+							}
+						}
+						locMap[idxMoved].loc = loc;
+					}
 
-		// if((capacity > TH0) && ((degree * 4) <= capacity)){
-		// 	//time to reduce capacity
-		// 	const u64 oldCap = capacity;
-		// 	const u64 newCap = capacity / 2;
-		// 	capacity = newCap;
+					//free block if needed
+					if(degree % BLOCK_SIZE == 0){
+						assert(degree == capacity - BLOCK_SIZE);
+						globalAllocator.freePow2(etype.type3.blockList.back(), BLOCK_SIZE * sizeof(Neigh));
+						etype.type3.blockList.pop_back();
+						capacity = capacity - BLOCK_SIZE;
 
-		// 	Neigh* __restrict oldPtr = etype.type3.neighArr;
-		// 	Neigh* __restrict newPtr;
+						//check if type switch or rehash is necessary
+						if(capacity <= TH1){	//T3 => T2
+							etype.type2.neighArr = etype.type3.blockList[0];
+							globalAllocator.freePow2(etype.type3.mapArr, etype.type3.mapCapacity * sizeof(Neigh));
+						}
+						else{ 	//T3 => T3
+							//rehash if needed
+							rebuildHashTable(capacity + BLOCK_SIZE, capacity);
+						}
+					}
 
-		// 	if(newCap <= TH0){
-		// 		//moving from type 2 or 3 to type 1
-		// 		newPtr = etype.type1.neigh;
-		// 		capacity = TH0;
-		// 	}
-		// 	else{
-		// 		etype.type3.neighArr = (Neigh*)globalAllocator.allocPow2(newCap * sizeof(Neigh));
-		// 		newPtr = etype.type3.neighArr;
-		// 	}
-
-		// 	//copy old adjList and free
-		// 	memcpy(newPtr, oldPtr, degree * sizeof(Neigh));
-		// 	globalAllocator.freePow2(oldPtr, oldCap * sizeof(Neigh));
-
-		// 	//shrink or delete hash table if needed
-		// 	rebuildHashTable(oldCap, newCap);
-		// }
+					return;
+				}
+				else if (locMap[idx].dst == FLAG_EMPTY_SLOT) {
+					//edge not found, return
+					return;
+				}
+				//move on
+				idx++;
+				if(idx == (etype.type3.mapCapacity)){
+					idx = 0;
+				}
+			}
+		}
 	}
 };
 
@@ -1890,10 +1899,8 @@ public:
 				//edge found, delete
 				degree--;
 				edgeCnt--;
-				nn->node = currNeighArr[degree].node;
-				nn->setWeight(currNeighArr[degree].getWeight());
-			}
-			else{
+				nn->node = currNeighArr[degree].node;  (use "git push" to publish your local commits)
+
 				//edge not found, nothing to do
 				return;
 			}
@@ -2052,4 +2059,3 @@ public:
 };
 
 #endif
-
