@@ -23,9 +23,10 @@ typedef robin_hood::unordered_flat_map<u32, u32> graphite_hashmap;
 typedef tsl::robin_map<u32, u32> graphite_hashmap;
 
 #else
-typedef std::unordered_map<u32, u32, std::unordered_map<u32, u32>::hasher, std::unordered_map<u32, u32>::key_equal, custom_allocator< std::pair<const u32,u32>> > graphite_hashmap;
+typedef std::unordered_map<u32, u32, std::unordered_map<u32, u32>::hasher,
+		std::unordered_map<u32, u32>::key_equal,
+		custom_allocator<std::pair<const u32, u32>> > graphite_hashmap;
 #endif
-
 
 #ifdef USE_HYBRID_HASHMAP_WITH_GROUPING
 
@@ -48,7 +49,6 @@ public:
 
 
 #endif
-
 
 #ifdef USE_HYBRID_HASHMAP_WITH_GROUPING_TIGHTER
 
@@ -75,31 +75,33 @@ public:
 
 #endif
 
-
 #if defined(USE_GT_BALANCED) || defined(USE_GT_BALANCED_DYN_PARTITION)
 
 #define 	FLAG_EMPTY_SLOT			0xFFFFFFFFU
 #define 	FLAG_TOMB_STONE			0xFFFFFFFEU
 #define		CACHE_LINE_SIZE			64
 
-template <typename Neigh>
-class alignas(CACHE_LINE_SIZE) EdgeArray{
+template<typename Neigh>
+class alignas(CACHE_LINE_SIZE) EdgeArray {
 
 private:
-	void rebuildHashTable(u64 oldCap, u64 newCap){
+	void rebuildHashTable(u64 oldCap, u64 newCap) {
 		//if newCap == power of 2
-		if(!(newCap & (newCap-1))){
+		if (!(newCap & (newCap - 1))
+				&& (etype.type3.mapCapacity != (newCap * 2))) {
 			if (etype.type3.mapCapacity) {
-				globalAllocator.freePow2(etype.type3.mapArr, etype.type3.mapCapacity * sizeof(DstLocPair));
+				globalAllocator.freePow2(etype.type3.mapArr,
+						etype.type3.mapCapacity * sizeof(DstLocPair));
 			}
 			//allocate new map
 			etype.type3.mapCapacity = newCap * 2;
-			etype.type3.mapArr = (DstLocPair*)globalAllocator.allocate(etype.type3.mapCapacity * sizeof(DstLocPair));
-			DstLocPair* __restrict locMap = etype.type3.mapArr;
+			etype.type3.mapArr = (DstLocPair*) globalAllocator.allocate(
+					etype.type3.mapCapacity * sizeof(DstLocPair));
+			DstLocPair *__restrict locMap = etype.type3.mapArr;
 			memset(locMap, -1, etype.type3.mapCapacity * sizeof(DstLocPair));
 
 			const u32 mask = etype.type3.mapCapacity - 1;
-			
+
 			assert(degree < etype.type3.mapCapacity);
 
 			//add existing nodes to hash
@@ -107,13 +109,13 @@ private:
 			u32 blockNum = degree / BLOCK_SIZE;
 			assert(degree % BLOCK_SIZE == 0);
 			for (u32 j = 0; j < blockNum; j++) {
-				const Neigh* nn = etype.type3.blockList[j];
-				for(u64 i = 0; i < BLOCK_SIZE; i++){
+				const Neigh *nn = etype.type3.blockList[j];
+				for (u64 i = 0; i < BLOCK_SIZE; i++) {
 					const u32 dst = nn[i].node;
-					assert((i32)dst >= 0);
+					assert((i32 )dst >= 0);
 					u32 idx = dst & mask;
-					while(true){
-						if(locMap[idx].dst == FLAG_EMPTY_SLOT){
+					while (true) {
+						if (locMap[idx].dst == FLAG_EMPTY_SLOT) {
 							//found insertion point
 							locMap[idx].dst = dst;
 							locMap[idx].loc = loc;
@@ -121,7 +123,7 @@ private:
 						}
 						//move on
 						idx++;
-						if(idx == (etype.type3.mapCapacity)){
+						if (idx == (etype.type3.mapCapacity)) {
 							idx = 0;
 						}
 					}
@@ -129,13 +131,13 @@ private:
 				}
 			}
 		}
-		
-	}
 
+	}
 
 public:
 
-	const static u64 TH0 = ((CACHE_LINE_SIZE - sizeof(u32) - sizeof(u32)) / sizeof(Neigh));
+	const static u64 TH0 = ((CACHE_LINE_SIZE - sizeof(u32) - sizeof(u32))
+			/ sizeof(Neigh));
 	const static u64 TH1 = HYBRID_HASH_PARTITION;
 	const static u64 BLOCK_SIZE = TH1; // when type3 fills out the existing block(s), we allocate a new block of size BLOCK_SIZE.
 
@@ -148,76 +150,72 @@ public:
 		} type1;
 
 		struct {
-			Neigh* 			 neighArr = nullptr;
+			Neigh *neighArr = nullptr;
 		} type2;
 
 		struct {
-			DstLocPair* 	__restrict mapArr = nullptr;
-			vector <Neigh*> blockList;
+			DstLocPair *__restrict mapArr = nullptr;
+			vector<Neigh*> blockList;
 			u64 mapCapacity;
 		} type3;
 
-	} etype;	
+	} etype;
 
 	u8 __pad[CACHE_LINE_SIZE - sizeof(u32) - sizeof(u32) - sizeof(etype)];
 
-	void insertEdge(const Idx dstId, const Weight weight, u64& edgeCnt){
+	void insertEdge(const Idx dstId, const Weight weight, u64 &edgeCnt) {
 		assert(dstId >= 0);
 		//First, check if needs expanding
-		if(__builtin_expect(degree == capacity, false)){
+		if (__builtin_expect(degree == capacity, false)) {
 
-			if(degree == TH0){	//Type 1 => Type 2
+			if (degree == TH0) {	//Type 1 => Type 2
 				capacity = getNextPow2(capacity * 2);
-				//cout << "T1 => T2: " << degree << "\t" << capacity << endl;
-				Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(capacity * sizeof(Neigh));
+				Neigh *__restrict newPtr = (Neigh*) globalAllocator.allocPow2(
+						capacity * sizeof(Neigh));
 				memcpy(newPtr, etype.type1.neigh, degree * sizeof(Neigh));
 				etype.type2.neighArr = newPtr;
-			}
-			else if((degree * 2) <= TH1) { // Type 2 => Type 2
+			} else if ((degree * 2) <= TH1) { // Type 2 => Type 2
 				capacity = capacity * 2;
-				Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(capacity * sizeof(Neigh));
+				Neigh *__restrict newPtr = (Neigh*) globalAllocator.allocPow2(
+						capacity * sizeof(Neigh));
 				memcpy(newPtr, etype.type2.neighArr, degree * sizeof(Neigh));
-				globalAllocator.freePow2(etype.type2.neighArr, degree * sizeof(Neigh));
+				globalAllocator.freePow2(etype.type2.neighArr,
+						degree * sizeof(Neigh));
 				etype.type2.neighArr = newPtr;
-			}
-			else if(degree == TH1){ // Type 2 => Type 3
+			} else if (degree == TH1) { // Type 2 => Type 3
 				capacity = capacity + BLOCK_SIZE;
 				new (&etype.type3.blockList) vector<Neigh*>();
-//				Neigh* newPtrr = (Neigh*)globalAllocator.allocPow2(BLOCK_SIZE * sizeof(Neigh));
-//				memcpy(newPtrr, etype.type2.neighArr, degree * sizeof(Neigh));
-//				globalAllocator.freePow2(etype.type2.neighArr, degree * sizeof(Neigh));
-//				etype.type3.blockList.push_back(newPtrr);
 				etype.type3.blockList.push_back(etype.type2.neighArr);
 				assert(etype.type2.neighArr[0].node >= 0);
-				Neigh* newPtr = (Neigh*)globalAllocator.allocPow2(BLOCK_SIZE * sizeof(Neigh));
+				Neigh *newPtr = (Neigh*) globalAllocator.allocPow2(
+						BLOCK_SIZE * sizeof(Neigh));
 				etype.type3.blockList.push_back(newPtr);
 				etype.type3.mapCapacity = 0;
 				//Grow hash table if needed
 				rebuildHashTable(degree, capacity);
-			} 
-			else { // Type 3 => Type 3
+			} else { // Type 3 => Type 3
 				capacity = capacity + BLOCK_SIZE;
-				Neigh* newPtr = (Neigh*)globalAllocator.allocPow2(BLOCK_SIZE * sizeof(Neigh));
+				Neigh *newPtr = (Neigh*) globalAllocator.allocPow2(
+						BLOCK_SIZE * sizeof(Neigh));
 				etype.type3.blockList.push_back(newPtr);
 				//Grow hash table if needed
 				rebuildHashTable(degree, capacity);
 			}
 		}
 
-		Neigh* __restrict currNeighArr;
+		Neigh *__restrict currNeighArr;
 
-		if(capacity <= TH0){
+		if (capacity <= TH0) {
 			currNeighArr = etype.type1.neigh;
-		}
-		else if (capacity <= TH1){
+		} else if (capacity <= TH1) {
 			currNeighArr = etype.type2.neighArr;
-		} 
+		}
 
 		//search and insert if not found
-		if(capacity <= TH1){
+		if (capacity <= TH1) {
 			//Type 1 or 2, do linear search
-			for(u64 i = 0; i < degree; i++){
-				if(currNeighArr[i].node == dstId){
+			for (u64 i = 0; i < degree; i++) {
+				if (currNeighArr[i].node == dstId) {
 					//found same edge, just update
 					currNeighArr[i].setWeight(weight);
 					assert(false);
@@ -227,137 +225,137 @@ public:
 			//not found, insert
 			currNeighArr[degree].node = dstId;
 			currNeighArr[degree].setWeight(weight);
-		}
-		else{
+		} else {
 			//type 3, use hash table + adj list
 			u32 idx = dstId & (etype.type3.mapCapacity - 1);
-			DstLocPair* __restrict locMap = etype.type3.mapArr;
-			DstLocPair* __restrict insLoc = nullptr;
+			DstLocPair *__restrict locMap = etype.type3.mapArr;
+			DstLocPair *__restrict insLoc = nullptr;
 			//probe = 0;
-			while(true){
+			while (true) {
 				//probe++;
-				if(locMap[idx].dst == FLAG_EMPTY_SLOT){
+				if (locMap[idx].dst == FLAG_EMPTY_SLOT) {
 					//edge not found, insert
-					if(insLoc){
-						locMap = insLoc;	//points to the first tomb stone found
+					if (insLoc) {
+						locMap = insLoc; //points to the first tomb stone found
 					}
 					locMap[idx].dst = dstId;
 					locMap[idx].loc = degree;
 					break;
-				}
-				else if((locMap[idx].dst == FLAG_TOMB_STONE) && (insLoc == nullptr)){
+				} else if ((locMap[idx].dst == FLAG_TOMB_STONE)
+						&& (insLoc == nullptr)) {
 					insLoc = locMap + idx;
-				}
-				else if(locMap[idx].dst == dstId){
+				} else if (locMap[idx].dst == dstId) {
 					//edge found, update weight
 					u32 blockId = locMap[idx].loc / BLOCK_SIZE;
-					u32 blockOffset =  locMap[idx].loc % BLOCK_SIZE;
-					assert(etype.type3.blockList[blockId][blockOffset].node == dstId);
-					etype.type3.blockList[blockId][blockOffset].setWeight(weight);
+					u32 blockOffset = locMap[idx].loc % BLOCK_SIZE;
+					assert(
+							etype.type3.blockList[blockId][blockOffset].node
+									== dstId);
+					etype.type3.blockList[blockId][blockOffset].setWeight(
+							weight);
 					//probingDist[probe]++;
 					assert(false);
 					return;
 				}
 				//move on
 				idx++;
-				if(idx == (etype.type3.mapCapacity)){
+				if (idx == (etype.type3.mapCapacity)) {
 					idx = 0;
 				}
 			}
 			//not found, insert
 			u32 blockId = degree / BLOCK_SIZE;
-			u32 blockOffset =  degree % BLOCK_SIZE;
+			u32 blockOffset = degree % BLOCK_SIZE;
 			etype.type3.blockList[blockId][blockOffset].node = dstId;
 			etype.type3.blockList[blockId][blockOffset].setWeight(weight);
 			assert(etype.type3.blockList[blockId][blockOffset].node >= 0);
-			assert(etype.type3.blockList[etype.type3.blockList.size()-1][0].node >= 0);
+			assert(
+					etype.type3.blockList[etype.type3.blockList.size() - 1][0].node
+							>= 0);
 		}
 		degree++;
 		edgeCnt++;
 	}
 
-
-	void deleteEdge(const Idx dstId, u64& edgeCnt){
+	void deleteEdge(const Idx dstId, u64 &edgeCnt) {
 		assert(dstId >= 0);
 		//search
-		if(capacity <= TH0){	//Type 1
-			Neigh* __restrict currNeighArr = etype.type1.neigh;
-			for(u64 i = 0; i < degree; i++){
-				if(currNeighArr[i].node == dstId){
+		if (capacity <= TH0) {	//Type 1
+			Neigh *__restrict currNeighArr = etype.type1.neigh;
+			for (u64 i = 0; i < degree; i++) {
+				if (currNeighArr[i].node == dstId) {
 					//edge found, delete
 					degree--;
 					edgeCnt--;
 					currNeighArr[i] = currNeighArr[degree];
 					return;
 				}
-			}			
+			}
 		}
-		if(capacity <= TH1){	//Type2
-			Neigh* __restrict currNeighArr = etype.type2.neighArr;
-			for(u64 i = 0; i < degree; i++){		
-				if(currNeighArr[i].node == dstId){
+		if (capacity <= TH1) {	//Type2
+			Neigh *__restrict currNeighArr = etype.type2.neighArr;
+			for (u64 i = 0; i < degree; i++) {
+				if (currNeighArr[i].node == dstId) {
 					//edge found, delete
 					degree--;
 					edgeCnt--;
 					currNeighArr[i] = currNeighArr[degree];
 
-					if(degree * 4 <= capacity){
+					if (degree * 4 <= capacity) {
 						//reduce capacity
 						u64 newCap = capacity / 2;
-						if(newCap <= TH0){
+						if (newCap <= TH0) {
 							//T2 => T1
-							memcpy(etype.type1.neigh, currNeighArr, degree * sizeof(Neigh));
-							globalAllocator.freePow2(currNeighArr, capacity * sizeof(Neigh));
+							memcpy(etype.type1.neigh, currNeighArr,
+									degree * sizeof(Neigh));
+							globalAllocator.freePow2(currNeighArr,
+									capacity * sizeof(Neigh));
 							capacity = TH0;
-						}
-						else{
+						} else {
 							//T2 => T2
-							etype.type2.neighArr = (Neigh*)globalAllocator.allocPow2(newCap * sizeof(Neigh));
-							memcpy(etype.type2.neighArr, currNeighArr, degree * sizeof(Neigh));
-							globalAllocator.freePow2(currNeighArr, capacity * sizeof(Neigh));
+							etype.type2.neighArr =
+									(Neigh*) globalAllocator.allocPow2(
+											newCap * sizeof(Neigh));
+							memcpy(etype.type2.neighArr, currNeighArr,
+									degree * sizeof(Neigh));
+							globalAllocator.freePow2(currNeighArr,
+									capacity * sizeof(Neigh));
 							capacity = newCap;
 						}
 					}
 					return;
 				}
 			}
-		}
-		else{	//Type 3
+		} else {	//Type 3
 			//using hashed mode
 			u32 idx = dstId & (etype.type3.mapCapacity - 1);
-			DstLocPair* __restrict locMap = etype.type3.mapArr;
-			while(true){
-				if(locMap[idx].dst == dstId){
+			DstLocPair *__restrict locMap = etype.type3.mapArr;
+			while (true) {
+				if (locMap[idx].dst == dstId) {
 					//edge found, delete
 					degree--;
 					edgeCnt--;
 					//delSucc++;
-					locMap[idx].dst = FLAG_TOMB_STONE; 				//invalidate previous hash-table entry
+					locMap[idx].dst = FLAG_TOMB_STONE; //invalidate previous hash-table entry
 
 					const u32 loc = locMap[idx].loc;
-					if(__builtin_expect(loc != degree, true)){		//nothing to do if last entry is removed
+					if (__builtin_expect(loc != degree, true)) { //nothing to do if last entry is removed
 						u32 currBlockId = loc / BLOCK_SIZE;
-						u32 currBlockOffset =  loc % BLOCK_SIZE;
+						u32 currBlockOffset = loc % BLOCK_SIZE;
 						u32 lastBlockId = degree / BLOCK_SIZE;
 						u32 lastBlockOffset = degree % BLOCK_SIZE;
 
-						const u32 node = etype.type3.blockList[lastBlockId][lastBlockOffset].node;
-						//assert((i32)node >= 0);
-						if((i32)node < 0){
-							cerr << "bla" << endl;
-							for(u64 i = 0; i < BLOCK_SIZE; i++){
-								cout << etype.type3.blockList[1][i] << " ";
-							}
-							cout << endl;
-						}
+						const u32 node =
+								etype.type3.blockList[lastBlockId][lastBlockOffset].node;
 						//copy last entry
-						etype.type3.blockList[currBlockId][currBlockOffset] = etype.type3.blockList[lastBlockId][lastBlockOffset];
+						etype.type3.blockList[currBlockId][currBlockOffset] =
+								etype.type3.blockList[lastBlockId][lastBlockOffset];
 
 						//point to correct location of the swapped entry
 						u32 idxMoved = node & (etype.type3.mapCapacity - 1);
-						while(locMap[idxMoved].dst != node){
+						while (locMap[idxMoved].dst != node) {
 							idxMoved++;
-							if(idxMoved == (etype.type3.mapCapacity)){
+							if (idxMoved == (etype.type3.mapCapacity)) {
 								idxMoved = 0;
 							}
 						}
@@ -365,32 +363,32 @@ public:
 					}
 
 					//free block if needed
-					if(degree % BLOCK_SIZE == 0){
+					if (degree % BLOCK_SIZE == 0) {
 						assert(degree == capacity - BLOCK_SIZE);
-						globalAllocator.freePow2(etype.type3.blockList.back(), BLOCK_SIZE * sizeof(Neigh));
+						globalAllocator.freePow2(etype.type3.blockList.back(),
+								BLOCK_SIZE * sizeof(Neigh));
 						etype.type3.blockList.pop_back();
 						capacity = capacity - BLOCK_SIZE;
 
 						//check if type switch or rehash is necessary
-						if(capacity <= TH1){	//T3 => T2
+						if (capacity <= TH1) {	//T3 => T2
+							globalAllocator.freePow2(etype.type3.mapArr,
+									etype.type3.mapCapacity * sizeof(Neigh));
 							etype.type2.neighArr = etype.type3.blockList[0];
-							globalAllocator.freePow2(etype.type3.mapArr, etype.type3.mapCapacity * sizeof(Neigh));
-						}
-						else{ 	//T3 => T3
+						} else { 	//T3 => T3
 							//rehash if needed
 							rebuildHashTable(capacity + BLOCK_SIZE, capacity);
 						}
 					}
 
 					return;
-				}
-				else if (locMap[idx].dst == FLAG_EMPTY_SLOT) {
+				} else if (locMap[idx].dst == FLAG_EMPTY_SLOT) {
 					//edge not found, return
 					return;
 				}
 				//move on
 				idx++;
-				if(idx == (etype.type3.mapCapacity)){
+				if (idx == (etype.type3.mapCapacity)) {
 					idx = 0;
 				}
 			}
@@ -398,17 +396,14 @@ public:
 	}
 };
 
-
-template <typename Neigh>
-class Vertex{
+template<typename Neigh>
+class Vertex {
 public:
-	 EdgeArray<Neigh>		inEdges;
-	 EdgeArray<Neigh>		outEdges;
+	EdgeArray<Neigh> inEdges;
+	EdgeArray<Neigh> outEdges;
 };
 
-
 #endif
-
 
 #if defined(USE_GT_BALANCED_TYPE3_ONLY)
 
@@ -597,7 +592,6 @@ public:
 
 
 #endif
-
 
 #ifdef USE_GT_BALANCED_STDMAP
 
@@ -789,8 +783,6 @@ public:
 
 #endif
 
-
-
 #if defined(USE_GT_BALANCED_MALLOC_STDMAP) || defined(USE_GT_BALANCED_RHH)
 
 #define		CACHE_LINE_SIZE			64
@@ -980,8 +972,6 @@ public:
 
 
 #endif
-
-
 
 #if defined(USE_GT_BALANCED_TSL_RHH)
 
@@ -1174,9 +1164,6 @@ public:
 
 #endif
 
-
-
-
 #ifdef USE_GT_BALANCED_ABSEIL
 
 #define		CACHE_LINE_SIZE			64
@@ -1366,8 +1353,6 @@ public:
 
 
 #endif
-
-
 
 #ifdef USE_GT_BALANCED_MALLOC
 
@@ -1634,8 +1619,6 @@ public:
 
 #endif
 
-
-
 #ifdef USE_GT_UPDATE
 
 #define 	FLAG_EMPTY_SLOT			0xFFFFFFFFU
@@ -1899,7 +1882,7 @@ public:
 				//edge found, delete
 				degree--;
 				edgeCnt--;
-				nn->node = currNeighArr[degree].node;  (use "git push" to publish your local commits)
+				nn->node = currNeighArr[degree].node;
 
 				//edge not found, nothing to do
 				return;
@@ -1987,7 +1970,6 @@ public:
 
 #endif
 
-
 #ifdef USE_HYBRID_HASHMAP_WITH_GROUPING_AND_EDGE_ARR_LOCKING
 
 template <typename Neigh>
@@ -2010,7 +1992,6 @@ public:
 
 #endif
 
-
 #ifdef USE_SORTED_EDGES
 
 template <typename Neigh>
@@ -2032,7 +2013,6 @@ public:
 
 #endif
 
-
 #ifdef USE_CAHCE_FRIENDLY_HASH
 
 #include "GraphTangoHash.h"
@@ -2045,7 +2025,6 @@ public:
 };
 
 #endif
-
 
 #ifdef USE_CAHCE_FRIENDLY_HASH_ONLY
 

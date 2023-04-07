@@ -39,9 +39,6 @@ int main(int argc, char *argv[]) {
 	ofstream updF("Update.csv");
 
 	while (!file.eof()) {
-		if(batch_id == 3){
-			break;
-		}
 		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
 
 		t.Start();
@@ -80,19 +77,13 @@ int main(int argc, char *argv[]) {
 	batch_id = 0;
 	el.clear();
 	while (!file.eof()) {
-		if(batch_id == 3){
-			break;
-		}
 		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
-
-		cout << "here" << endl;
 
 		t.Start();
 		ds->update(el);
 		t.Stop();
 
 		updF << t.Seconds() << endl;
-		//cout << "del," << ((ds->num_edges * 1.0) / ds->num_nodes) << endl;
 		cout << "Deleted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
 
 		//alg.performAlg();
