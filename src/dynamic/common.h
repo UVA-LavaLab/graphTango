@@ -50,6 +50,7 @@ typedef		I64			Idx;
 #ifdef ENABLE_PROFILING
 #define		CALC_TYPE_SWITCH
 #define		CALC_MEM_PER_EDGE
+#define		CALC_PROBING_DISTANCE
 //#define 	CALC_EDGE_TOUCHED	/* do it later as it requires running the algo */
 #define		CALC_STATIC_TYPE_MAPPING
 #define		CALC_DYNNAMIC_TYPE_MAPPING

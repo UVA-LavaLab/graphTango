@@ -11,4 +11,8 @@ extern LockFreePoolWithList<> globalAllocator;
 extern u64 g_edge_touched;
 #endif
 
+#ifdef CALC_PROBING_DISTANCE
+extern u64 g_num_type3;
+extern u64 g_num_probes;
+#endif
 

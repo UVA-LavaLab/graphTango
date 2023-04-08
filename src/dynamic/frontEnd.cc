@@ -51,13 +51,14 @@ int main(int argc, char *argv[]) {
 		updF << t.Seconds() << endl;
 		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
 
-#ifndef ENABLE_PROFILING /*No need to run algorithm if profiling non algorithm specific things, e.g., type mapping */
-		alg.performAlg();
-#endif
 
 		batch_id++;
 	}
 	updF.close();
+
+#ifndef ENABLE_PROFILING /*No need to run algorithm if profiling non algorithm specific things, e.g., type mapping */
+		alg.performAlg();
+#endif
 
 
 //	while (!file.eof()) {
@@ -103,6 +104,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef CALC_EDGE_TOUCHED
 	cout << "EDGES TOUCHED: " << g_edge_touched << endl;
+#endif
+
+#ifdef CALC_PROBING_DISTANCE
+	cout << "Average probing distance: " << 1.0 * g_num_probes / g_num_type3 << endl;
 #endif
 }
 

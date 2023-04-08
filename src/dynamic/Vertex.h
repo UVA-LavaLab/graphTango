@@ -191,8 +191,16 @@ public:
 			u32 idx = dstId & (capacity * 2 - 1);
 			DstLocPair* __restrict locMap = etype.type2_3.mapArr;
 			DstLocPair* __restrict insLoc = nullptr;
+			#ifdef CALC_PROBING_DISTANCE
+			u32 probe = 0;
+			#pragma omp atomic
+			g_num_type3++;
+			#endif
 			//probe = 0;
 			while(true){
+				#ifdef CALC_PROBING_DISTANCE
+				probe++;
+				#endif
 				//probe++;
 				if(locMap[idx].dst == FLAG_EMPTY_SLOT){
 					//edge not found, insert
@@ -210,6 +218,10 @@ public:
 					//edge found, update weight
 					currNeighArr[locMap[idx].loc].setWeight(weight);
 					//probingDist[probe]++;
+					#ifdef CALC_PROBING_DISTANCE
+					#pragma omp atomic
+					g_num_probes += probe;
+					#endif
 					return;
 				}
 				//move on
@@ -218,6 +230,10 @@ public:
 					idx = 0;
 				}
 			}
+			#ifdef CALC_PROBING_DISTANCE
+			#pragma omp atomic
+			g_num_probes += probe;
+			#endif
 		}
 		//not found, insert
 		currNeighArr[degree].node = dstId;

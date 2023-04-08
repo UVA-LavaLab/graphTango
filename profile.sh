@@ -6,44 +6,40 @@ rm -rf Update*.csv
 
 #export LD_LIBRARY_PATH=/home/alif/.installs/likwid/lib/ib/ 
 export OMP_DISPLAY_ENV=true
-export OMP_NUM_THREADS=24
+export OMP_NUM_THREADS=12
 export OMP_PROC_BIND=close
 #export OMP_PLACES={2}:64:1
 export OMP_PLACES=threads
 
-dataDir=/bigtemp/fas9nw/gapbs_shuffled/
-STRUCTURES=(adListChunked adListShared degAwareRHH stinger)
+dataDir=../../
+#STRUCTURES=(adListChunked adListShared degAwareRHH stinger)
 #STRUCTURES=(graphite adListChunked adListShared degAwareRHH stinger)
 STRUCTURES=(graphTango)
 batchSize=1000000
-NumThreads=24
+NumThreads=12
 
 # whether each algorithm is weighted or unweighted
 declare -A ALGORITHMS 
 ALGORITHMS=(         
-         [ccdyn]=0         
-         [prdyn]=0
+#         [ccdyn]=0         
+#         [prdyn]=0
          [bfsdyn]=0
 #         [mcdyn]=0 
 #         [sswpdyn]=1
-         [ssspdyn]=1
+ #        [ssspdyn]=1
 )
 
 # Max num_nodes to initialize for each dataset
 declare -A DATASETS
 DATASETS=(
-       [twitter.el]=61578415       
-       [road.el]=23947347       
-       [web.el]=50636151
-       [urand.el]=134217728
-       [kron.el]=134217728
+       [orkut.el]=3072441
 )
 
   for dataset in "${!DATASETS[@]}"; do  
     for structure in "${STRUCTURES[@]}"; do
       for algorithm in "${!ALGORITHMS[@]}"; do 
          echo ../frontEnd -d 1 -w ${ALGORITHMS[$algorithm]} -f ${dataDir}$dataset -b ${batchSize} -s $structure -n ${DATASETS[$dataset]} -a $algorithm -t ${NumThreads}   
-         ../frontEnd -d 1 -o "update.csv" -w ${ALGORITHMS[$algorithm]} -f ${dataDir}$dataset -b ${batchSize} -s $structure -n ${DATASETS[$dataset]} -a $algorithm -t ${NumThreads}  
+         ./frontEnd -d 1 -o "update.csv" -w ${ALGORITHMS[$algorithm]} -f ${dataDir}$dataset -b ${batchSize} -s $structure -n ${DATASETS[$dataset]} -a $algorithm -t ${NumThreads}  
         DIRECTORY=./results/${algorithm}/${structure}/${dataset}/
         mkdir -p ${DIRECTORY}
         mv Alg*.csv ${DIRECTORY}/
