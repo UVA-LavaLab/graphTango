@@ -38,7 +38,7 @@ typedef		I64			Idx;
 #define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
 #endif
 
-#define ENABLE_PROFILING
+//#define ENABLE_PROFILING
 
 //#define		CALC_TYPE_SWITCH
 //#define		USE_CFH_FOR_DAH

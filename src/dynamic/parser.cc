@@ -50,6 +50,7 @@ void printUsage()
 		  << "-n max number of nodes  to initialize with\n"
 	      << "-a algorithm      algorithm to run (default: bfsdyn)\n"
 	      << "-t number of threads      (default: 16)\n"
+		  << "-r enable edge deletion	0=disable	1=enable\n"
 	      << "  DATA STRUCTURE OPTIONS:\n"
 		  << "               1) adList (single-threaded) \n"		  
 	      << "               2) adListShared (multihtreaded shared style) \n"
@@ -78,7 +79,7 @@ cmd_args parse(int argc, char *argv[])
 {
     cmd_args args;
     int opt = 0;
-    while(-1 != (opt = getopt(argc, argv, "f:b:w:d:s:n:a:t:h"))) {
+    while(-1 != (opt = getopt(argc, argv, "f:b:w:d:s:n:a:t:h:r"))) {
         switch(opt) {
 	case 'f':               
 //	    if (getSuffix(optarg) != ".csv") {
@@ -130,6 +131,17 @@ cmd_args parse(int argc, char *argv[])
 	case 't':
 	    args.num_threads = atoi(optarg);    
 	    break;
+	case 'r':
+		if(atoi(optarg) == 1) {
+			args.enDeleteEdges = true;
+		} else if (atoi(optarg) == 0) {
+			args.enDeleteEdges = false;
+		} else {
+			std::cerr << "-r only takes 0 or 1" << std::endl;
+			printUsage();
+			exit(-1);
+		}
+		break;
 	case 'a':
 	    args.algorithm = optarg;                  
 	    if (!supportedAlg(args.algorithm)) {
