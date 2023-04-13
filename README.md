@@ -50,6 +50,11 @@ $ ./frontEnd -f example.csv -b 1000000 -w 0 -d 1 -s graphTango -n 5000000 -a bfs
 
 Each run generates two csv files: **Alg.csv** and **Update.csv**. These files contain per-batch analytics and update times, respectively, in seconds.
 
+## How to Cite
+
+If you are using this, please cite:
+Alif Ahmed, Farzana Ahmed Siddique, Kevin Skadron. [*GraphTango: A Hybrid Representation Format for Efficient Streaming Graph Updates and Analysis*](https://arxiv.org/abs/2212.11935). arXiv:2212.11935 [cs.DS], 2022.
+
 
 ## Contact
 In case of any concern, please contact Alif Ahmed at alifahmed@virginia.edu.
