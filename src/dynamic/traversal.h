@@ -796,7 +796,8 @@ public:
 		|| defined(USE_GT_BALANCED_DYN_PARTITION)	\
 		|| defined(USE_GT_BALANCED_ABSEIL)			\
 		|| defined(USE_GT_BALANCED_RHH)				\
-		|| defined(USE_GT_BALANCED_TSL_RHH)
+		|| defined(USE_GT_BALANCED_TSL_RHH)			\
+		|| defined(USE_GT_LOAD_BALANCED)
 
 template<typename U>
 class neighborhood<GraphTango<U>> {

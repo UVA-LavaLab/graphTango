@@ -21,6 +21,9 @@ typedef		int8_t		i8;
 typedef		I64			Idx;
 
 #define 	MIN_RET_VAL  		2
+#ifndef _OPENMP
+#define _OPENMP
+#endif
 
 //#define LIKWID_PERFMON
 
@@ -58,7 +61,8 @@ typedef		I64			Idx;
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
 //#define 	USE_HYBRID_HASHMAP_WITH_CFH
-#define 	USE_GT_BALANCED
+#define 	USE_GT_LOAD_BALANCED
+//#define 	USE_GT_BALANCED
 //#define 	USE_GT_BALANCED_TYPE3_ONLY
 //#define 	USE_GT_BALANCED_MALLOC
 //#define 	USE_GT_BALANCED_STDMAP
@@ -92,12 +96,17 @@ typedef		I64			Idx;
 			|| defined(USE_GT_BALANCED_DYN_PARTITION)									\
 			|| defined(USE_GT_BALANCED_ABSEIL)											\
 			|| defined(USE_GT_BALANCED_RHH)												\
-			|| defined(USE_GT_BALANCED_TSL_RHH)
+			|| defined(USE_GT_BALANCED_TSL_RHH)											\
+			|| defined(USE_GT_LOAD_BALANCED)
 #define		HYBRID_HASH_PARTITION		64UL
 #endif
 
 #ifdef		USE_SORTED_EDGES
 #define		LINEAR_BUFF_SIZE			512UL
+#endif
+
+#ifdef		USE_GT_LOAD_BALANCED
+#define		LB_NUMBER_OF_BUCKETS		128UL
 #endif
 
 typedef struct {

@@ -4,10 +4,10 @@ C = g++
 CXX = g++
 ABSEIL_DIR=src/dynamic/abseil/
 
-#CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O3
-#CFLAGS = -O3 -g -std=c++11 -fpermissive
-CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O0
-CFLAGS = -O0 -g -std=c++11 -fpermissive
+CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O3
+CFLAGS = -O3 -g -std=c++11 -fpermissive
+#CXXFLAGS = -std=c++11 -g -pthread -fopenmp -O0
+#CFLAGS = -O0 -g -std=c++11 -fpermissive
 
 DYN_PREFIX := d_
 

@@ -43,26 +43,408 @@ public:
 #ifdef CALC_MEM_PER_EDGE
 		cout << "Total memory req: " << globalAllocator.totMem << endl;
 #endif
-
-
-//		std::cout << "Inserts--------------------" << std::endl;
-//		std::cout << "    Total: " << insTot << std::endl;
-//		std::cout << "    Succ : " << insSucc << std::endl;
-//		std::cout << "    Fail : " << insTot - insSucc << std::endl;
-//		std::cout << std::endl;
-//
-//		std::cout << "Deletes--------------------" << std::endl;
-//		std::cout << "    Total: " << delTot << std::endl;
-//		std::cout << "    Succ : " << delSucc << std::endl;
-//		std::cout << "    Fail : " << delTot - delSucc << std::endl;
-//		std::cout << std::endl;
-//
-//		std::cout << "Final number of edges: " << insSucc - delSucc << std::endl;
-//		ofstream out("probing_dist.csv");
-//		for(auto it : probingDist){
-//			out << it.first << "," << it.second << endl;
-//		}
 	}
+
+#if defined(USE_GT_LOAD_BALANCED)
+
+	Vertex<Neigh>* vArray;
+
+	//VertexArray<Neigh> vArray;
+	const int num_threads;
+
+#if defined(CALC_TYPE_SWITCH) || defined(CALC_DYNNAMIC_TYPE_MAPPING)
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		u64 switchCnt = 0;
+		u64 type1 = 0;
+		u64 type2 = 0;
+		u64 type3 = 0;
+		u8  pad[16];
+	} ThreadInfo;
+#else
+	typedef struct{
+		u64 edgeCnt = 0;
+		u64 nodeCnt = 0;
+		vector<vector<Edge>> inBuckets;
+		vector<vector<Edge>> outBuckets;
+	} ThreadInfo;
+#endif
+
+	alignas(64) ThreadInfo thInfo[32];
+
+	GraphTango(bool weighted, bool directed, i64 numNodes, i64 numThreads) : dataStruc(weighted, directed), num_threads(numThreads){
+#ifdef _OPENMP
+		if(numThreads > 0){
+			omp_set_num_threads(numThreads);
+		}
+#endif
+		vArray = (Vertex<Neigh>*)globalAllocator.allocate(sizeof(Vertex<Neigh>) * numNodes);
+
+		#pragma omp parallel for
+		for(u64 i = 0; i < numNodes; i++){
+			vArray[i].inEdges.degree = 0;
+			vArray[i].inEdges.capacity = EdgeArray<Neigh>::TH0;
+
+			vArray[i].outEdges.degree = 0;
+			vArray[i].outEdges.capacity = EdgeArray<Neigh>::TH0;
+		}
+
+		#pragma omp parallel for
+		for(i32 i = 0; i < numThreads; i++){
+			thInfo[i].inBuckets.resize(LB_NUMBER_OF_BUCKETS);
+			thInfo[i].outBuckets.resize(LB_NUMBER_OF_BUCKETS);
+		}
+
+		cout << "TH0: " << EdgeArray<Neigh>::TH0 << endl;
+		cout << "TH1: " << EdgeArray<Neigh>::TH1 << endl;
+		cout << "Sizeof ThreadInfo: " << sizeof(ThreadInfo) << endl;
+		cout << "Sizeof EdgeArray: " << sizeof(EdgeArray<Neigh>) << endl;
+		cout << "Sizeof Vertex: " << sizeof(Vertex<Neigh>) << endl;
+
+#ifdef _OPENMP
+		cout << "Max threads: " << omp_get_max_threads() << endl;
+#endif
+
+		property.resize(numNodes, -1);
+		affected.resize(numNodes);
+		affected.fill(false);
+	}
+
+	virtual ~GraphTango(){
+#ifdef CALC_STATIC_TYPE_MAPPING
+		u64 type1 = 0;
+		u64 type2 = 0;
+		u64 type3 = 0;
+		for(u64 i = 0; i < num_nodes; i++){
+			u64 numNeigh = in_degree(i);
+			if(numNeigh <= EdgeArray<Neigh>::TH0){
+				type1++;
+			}
+			else if(numNeigh <= EdgeArray<Neigh>::TH1){
+				type2++;
+			}
+			else{
+				type3++;
+			}
+			numNeigh = out_degree(i);
+			if(numNeigh <= EdgeArray<Neigh>::TH0){
+				type1++;
+			}
+			else if(numNeigh <= EdgeArray<Neigh>::TH1){
+				type2++;
+			}
+			else{
+				type3++;
+			}
+		}
+		cout << "Static type mapping: \n\tType1: " << type1 << "\t\tType2: " << type2 << "\t\tType3: " << type3 << endl;
+#endif
+#ifdef CALC_DYNNAMIC_TYPE_MAPPING
+		u64 dynType1 = 0;
+		u64 dynType2 = 0;
+		u64 dynType3 = 0;
+		for(u64 i = 0; i < num_threads; i++){
+			dynType1 += thInfo[i].type1;
+			dynType2 += thInfo[i].type2;
+			dynType3 += thInfo[i].type3;
+		}
+		cout << "Dynamic type mapping: \n\tType1: " << dynType1 << "\t\tType2: " << dynType2 << "\t\tType3: " << dynType3 << endl;
+#endif
+#ifdef CALC_TYPE_SWITCH
+		u32 switchCnt = 0;
+		for(u64 i = 0; i < num_threads; i++){
+			switchCnt += thInfo[i].switchCnt;
+		}
+		cout << "Switch Count: " << switchCnt << endl;
+#endif
+	}
+
+	int64_t in_degree(NodeID n) override {
+		return vArray[n].inEdges.degree;
+	}
+
+	int64_t out_degree(NodeID n) override {
+		return vArray[n].outEdges.degree;
+	}
+
+	void update(const EdgeList& el) override {
+		//probe = 0;
+		const u64 batchSize = el.size();
+
+#ifdef _OPENMP
+		const u64 elemPerTh = ceil(1.0 * batchSize / num_threads);
+
+		//clear the buckets
+		#pragma omp parallel for
+		for(i32 i = 0; i < num_threads; i++){
+			ThreadInfo& th = thInfo[i];
+			for(u32 j = 0; j < LB_NUMBER_OF_BUCKETS; j++){
+				th.inBuckets[j].clear();
+				th.outBuckets[j].clear();
+			}
+		}
+
+		//distribute edges to the buckets
+		#pragma omp parallel
+		{
+			const i64 actualTh = omp_get_thread_num();
+			ThreadInfo& th = thInfo[actualTh];
+			const u64 startIdx = actualTh * elemPerTh;
+			const u64 endIdx = (startIdx + elemPerTh) > batchSize ? batchSize : (startIdx + elemPerTh);
+
+			for(u64 i = startIdx; i < endIdx; i++){
+				const i64 src = el[i].source;
+				const i64 dst = el[i].destination;
+				if(!el[i].sourceExists){
+					th.nodeCnt++;
+				}
+				if(!el[i].destExists){
+					th.nodeCnt++;
+				}
+				const u64 srcBucketIdx = (src / 64) % LB_NUMBER_OF_BUCKETS;
+				const u64 dstBucketIdx = (dst / 64) % LB_NUMBER_OF_BUCKETS;
+
+				th.inBuckets[dstBucketIdx].push_back(el[i]);
+				th.outBuckets[srcBucketIdx].push_back(el[i]);
+			}
+		}
+
+
+		u64 nextBucketIdx = 0;
+
+		//process the buckets
+		#pragma omp parallel
+		{
+			const i64 actualTh = omp_get_thread_num();
+			while(true){
+				u64 currBucketId;
+				#pragma omp atomic capture
+				currBucketId = nextBucketIdx++;
+				if(currBucketId < LB_NUMBER_OF_BUCKETS){
+					u64 garbage;
+					//in bucket
+					for(u32 thId = 0; thId < num_threads; thId++){
+						const vector<Edge>& bucket = thInfo[thId].inBuckets[currBucketId];
+						for(const Edge& e : bucket){
+							const i64 src = e.source;
+							const i64 dst = e.destination;
+							if(!affected[dst]){
+								affected[dst] = true;
+							}
+							if(!e.isDelete){	//insertion to inEdges
+								vArray[dst].inEdges.insertEdge(src, e.weight, garbage);
+							}
+							else{				//deletion from inEdges
+								vArray[dst].inEdges.deleteEdge(src, garbage);
+							}
+						}
+					}
+				}
+				else if(currBucketId < LB_NUMBER_OF_BUCKETS * 2){
+					//out bucket
+					currBucketId = currBucketId - LB_NUMBER_OF_BUCKETS;
+					for(u32 thId = 0; thId < num_threads; thId++){
+						const vector<Edge>& bucket = thInfo[thId].outBuckets[currBucketId];
+						for(const Edge& e : bucket){
+							const i64 src = e.source;
+							const i64 dst = e.destination;
+							if(!affected[src]){
+								affected[src] = true;
+							}
+							if(!e.isDelete){	//insertion to outEdges
+								vArray[src].outEdges.insertEdge(dst, e.weight, thInfo[actualTh].edgeCnt);
+							}
+							else{				//deletion from outEdges
+								vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+							}
+						}
+					}
+				}
+				else{
+					break;
+				}
+			}
+		}
+
+//
+//
+//
+//
+//		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
+//
+//		#pragma omp parallel
+//		{
+//			const i64 actualTh = omp_get_thread_num();
+//			LIKWID_MARKER_START("upd");
+//			for(u64 i = 0; i < batchSize; i++){
+//				const i64 src = el[i].source;
+//				const i64 dst = el[i].destination;
+//
+//				//i64 targetTh = (src / 64) & thMask;
+//				i64 targetTh = (src / 64) % num_threads;
+//				if(targetTh == actualTh){
+//					if(!el[i].sourceExists){
+//						thInfo[actualTh].nodeCnt++;
+//					}
+//					if(!el[i].destExists){
+//						thInfo[actualTh].nodeCnt++;
+//					}
+//
+//					if(!affected[src]){
+//						affected[src] = true;
+//					}
+//
+//					#ifdef CALC_TYPE_SWITCH
+//					VType initType = VType::VTYPE_3;
+//					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
+//						initType = VType::VTYPE_1;
+//					}
+//					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
+//						initType = VType::VTYPE_2;
+//					}
+//					#endif
+//
+//					if(!el[i].isDelete){
+//						//insert out edge
+//						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
+//					}
+//					else{
+//						//delete out edge
+//						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
+//					}
+//
+//					#ifdef CALC_TYPE_SWITCH
+//					VType finType = VType::VTYPE_3;
+//					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
+//						finType = VType::VTYPE_1;
+//					}
+//					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
+//						finType = VType::VTYPE_2;
+//					}
+//					if(initType != finType){
+//						thInfo[actualTh].switchCnt++;
+//					}
+//					#endif
+//
+//					#ifdef CALC_DYNNAMIC_TYPE_MAPPING
+//					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
+//						thInfo[actualTh].type1++;
+//					}
+//					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
+//						thInfo[actualTh].type2++;
+//					}
+//					else{
+//						thInfo[actualTh].type3++;
+//					}
+//					#endif
+//				}
+//
+//				//targetTh = (dst / 64) & thMask;
+//				targetTh = (dst / 64) % num_threads;
+//				if(targetTh == actualTh){
+//					if(!affected[dst]){
+//						affected[dst] = true;
+//					}
+//
+//					#ifdef CALC_TYPE_SWITCH
+//					VType initType = VType::VTYPE_3;
+//					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
+//						initType = VType::VTYPE_1;
+//					}
+//					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
+//						initType = VType::VTYPE_2;
+//					}
+//					#endif
+//
+//					u64 garbage;
+//					if(!el[i].isDelete){
+//						//insert in edge
+//						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+//					}
+//					else{
+//						//delete in edge
+//						vArray[dst].inEdges.deleteEdge(src, garbage);
+//					}
+//
+//					#ifdef CALC_TYPE_SWITCH
+//					VType finType = VType::VTYPE_3;
+//					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
+//						finType = VType::VTYPE_1;
+//					}
+//					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
+//						finType = VType::VTYPE_2;
+//					}
+//					if(initType != finType){
+//						thInfo[actualTh].switchCnt++;
+//					}
+//					#endif
+//
+//					#ifdef CALC_DYNNAMIC_TYPE_MAPPING
+//					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
+//						thInfo[actualTh].type1++;
+//					}
+//					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
+//						thInfo[actualTh].type2++;
+//					}
+//					else{
+//						thInfo[actualTh].type3++;
+//					}
+//					#endif
+//				}
+//
+//			}
+//			LIKWID_MARKER_STOP("upd");
+//		}
+#else
+		for(u64 i = 0; i < batchSize; i++){
+			const u64 src = el[i].source;
+			const u64 dst = el[i].destination;
+
+			if(!el[i].sourceExists){
+				thInfo[0].nodeCnt++;
+			}
+			if(!el[i].destExists){
+				thInfo[0].nodeCnt++;
+			}
+			//we do not need atomic operation on affected as long as "some" thread updates it
+			if(!affected[src]){
+				affected[src] = true;
+			}
+			if(!affected[dst]){
+				affected[dst] = true;
+			}
+
+			u64 garbage;
+			if(!el[i].isDelete){
+				//insertion
+				//insert out edge
+				vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[0].edgeCnt);
+
+				//insert in edge
+				vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
+			}
+			else{
+				//delete out edge
+				vArray[src].outEdges.deleteEdge(dst, thInfo[0].edgeCnt);
+
+				//delete in edge
+				vArray[dst].inEdges.deleteEdge(src, garbage);
+			}
+		}
+#endif
+
+		for(u64 i = 0; i < num_threads; i++){
+			num_edges += thInfo[i].edgeCnt;
+			thInfo[i].edgeCnt = 0;
+			num_nodes += thInfo[i].nodeCnt;
+			thInfo[i].nodeCnt = 0;
+		}
+		//num_nodes = el[batchSize - 1].lastAssignedId + 1;
+	}
+
+#endif
+
 
 #ifdef USE_HYBRID_HASHMAP
 
@@ -1078,7 +1460,6 @@ public:
 	}
 
 #endif
-
 
 
 #ifdef USE_GT_BALANCED_TYPE3_ONLY
