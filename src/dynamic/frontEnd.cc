@@ -34,10 +34,8 @@ int main(int argc, char *argv[]) {
 
 	Timer t;
 	dataStruc *ds = createDataStruc(opts.type, opts.weighted, opts.directed, opts.num_nodes, opts.num_threads);
-	Algorithm alg(opts.algorithm, ds, opts.type);
-
-	ofstream updF("Update.csv");
-
+	Algorithm alg(opts.algorithm, ds, opts.type); 
+	double totTime = 0.0;
 	while (!file.eof()) {
 		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
 
@@ -45,51 +43,51 @@ int main(int argc, char *argv[]) {
 		ds->update(el);
 		t.Stop();
 
-		updF << t.Seconds() << endl;
+		totTime += t.Seconds();
 		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
-
-		alg.performAlg();
 
 		batch_id++;
 	}
-	updF.close();
+	file.close();
 
+	ofstream logFile("time.csv");
+	logFile << totTime << endl;
+	cout << "Total insertion time: " << totTime << endl;
 
-//	while (!file.eof()) {
-//		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
-//		ds->update(el);
-//		cout << "Inserted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
-//		//cout << "ins," << ((ds->num_edges * 1.0) / ds->num_nodes) << endl;
-//		batch_id++;
-//	}
-//
-//	file.close();
+	t.Start();
+	alg.performAlg();
+	t.Stop();
 
-//	stringstream ss;
-//	ss << opts.filename << ".del";
-//	file.open(ss.str());
-//	if (!file.is_open()) {
-//		cout << "Couldn't open file " << ss.str() << endl;
-//		exit(-1);
-//	}
-//
-//	batch_id = 0;
-//	while (!file.eof()) {
-//		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
-//
-//		t.Start();
-//		ds->update(el);
-//		t.Stop();
-//
-//		updF << t.Seconds() << endl;
-//		//cout << "del," << ((ds->num_edges * 1.0) / ds->num_nodes) << endl;
-//		cout << "Deleted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
-//
-//		alg.performAlg();
-//
-//		batch_id++;
-//	}
-//	updF.close();
+	totTime = t.Seconds();
+	logFile << totTime << endl;
+	cout << "Alg time: " << totTime << endl;
+
+	stringstream ss;
+	ss << opts.filename << ".del";
+	file.open(ss.str());
+	if (!file.is_open()) {
+		cout << "Couldn't open file " << ss.str() << endl;
+		exit(-1);
+	}
+
+	batch_id = 0;
+	totTime = 0.0;
+	while (!file.eof()) {
+		readBatchFromCSV(el, file, opts.batch_size, batch_id, opts.weighted, VMAP, lastAssignedNodeID);
+
+		t.Start();
+		ds->update(el);
+		t.Stop();
+
+		totTime += t.Seconds();
+		cout << "Deleted Batch " << batch_id << ": Nodes " << ds->num_nodes << ", Edges " << ds->num_edges << endl;
+		batch_id++;
+	}
+	file.close();
+
+	logFile << totTime << endl;
+	logFile.close();
+	cout << "Total deletion time: " << totTime << endl;
 
 	ds->print();
 #ifdef CALC_EDGE_TOUCHED

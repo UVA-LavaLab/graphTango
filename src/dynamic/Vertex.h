@@ -76,7 +76,7 @@ public:
 #endif
 
 
-#if defined(USE_GT_BALANCED) || defined(USE_GT_BALANCED_DYN_PARTITION)
+#if defined(USE_GT_BALANCED) || defined(USE_GT_BALANCED_DYN_PARTITION) || defined(USE_GT_LOAD_BALANCED)
 
 #define 	FLAG_EMPTY_SLOT			0xFFFFFFFFU
 #define 	FLAG_TOMB_STONE			0xFFFFFFFEU

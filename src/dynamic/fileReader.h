@@ -26,11 +26,12 @@ Edge convertCSVLineIntoEdge(const char delim, const string& line, bool weighted)
     
     getline(ss, data, delim); e.source = stol(data);
     getline(ss, data, delim); e.destination = stol(data);
-    getline(ss, data, delim); /*time = stol(data);*/
+    //getline(ss, data, delim); /*time = stol(data);*/
 
     if(weighted){
         getline(ss, data, delim);
-        e.weight = stol(data);
+        //e.weight = stol(data);
+        e.weight = (rand() % 8) + 8;
     }
 
     if(line[0] == '-'){
@@ -75,7 +76,7 @@ void readBatchFromCSV(EdgeList& el, ifstream& in, int batchSize, int batch_id, b
 
     while(getline(in, line)){
         if(line != ""){          
-            Edge e = convertCSVLineIntoEdge(',', line, weighted);
+            Edge e = convertCSVLineIntoEdge(' ', line, weighted);
             if(assignLogicalID(e.source, VMap, lastAssignedLogicalID)) e.sourceExists = true;
             if(assignLogicalID(e.destination, VMap, lastAssignedLogicalID)) e.destExists = true;
             //e.batch_id = batch_id;
