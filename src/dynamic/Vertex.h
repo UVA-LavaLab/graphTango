@@ -145,19 +145,20 @@ public:
 			capacity = getNextPow2(capacity * 2);
 			Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(capacity * sizeof(Neigh));
 
-			if(degree <= TH0){	//Going from Type 1 to Type 2
+			//handle old type
+			if(degree <= TH0){
 				memcpy(newPtr, etype.type1.neigh, degree * sizeof(Neigh));
-				etype.type2_3.mapArr = nullptr;
 			}
-			else{				//Type 2 or 3
+			else {
 				memcpy(newPtr, etype.type2_3.neighArr, degree * sizeof(Neigh));
-				globalAllocator.freePow2(etype.type2_3.neighArr, capacity / 2 * sizeof(Neigh));
-				if(degree <= TH1 && capacity > TH1){
-					// going from Type 2 to Type 3
-					rebuildHashTable(capacity);
-				}
+				globalAllocator.freePow2(etype.type2_3.neighArr, degree * sizeof(Neigh));
 			}
 			etype.type2_3.neighArr = newPtr;
+
+			//handle new type
+			if(degree <= TH1 && capacity > TH1){
+				rebuildHashTable(capacity);
+			}
 		}
 
 		
