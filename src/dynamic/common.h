@@ -68,7 +68,7 @@ typedef		I64			Idx;
 //#define		USE_SORTED_EDGES
 //#define		USE_CAHCE_FRIENDLY_HASH
 //#define		USE_CAHCE_FRIENDLY_HASH_ONLY
-
+#define GT_MAX_LOAD_FACTOR				0.5f
 #if			defined(USE_HYBRID_HASHMAP)													\
 			|| defined(USE_HYBRID_HASHMAP_WITH_CFH)										\
 			|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING)								\
