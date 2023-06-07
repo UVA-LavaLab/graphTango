@@ -1,6 +1,7 @@
 .settings/
 .project
 .cproject
+.vscode/
 bin/
 obj/
 inputResource/*.csv

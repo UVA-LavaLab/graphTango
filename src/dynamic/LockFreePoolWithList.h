@@ -11,7 +11,7 @@
 
 #define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
 
-template <u64 MAX_THREADS = 16, u64 MAX_SEGMENT_BITS = 32, u64 BLOCK_SIZE = (1UL << 22)>
+template <u64 MAX_THREADS = 32, u64 MAX_SEGMENT_BITS = 32, u64 BLOCK_SIZE = (1UL << 22)>
 class LockFreePoolWithList {
 	alignas(64) void* __restrict nextFreePtrs[MAX_THREADS][MAX_SEGMENT_BITS];
 
@@ -63,6 +63,7 @@ public:
 	}
 
 	void* allocPow2(u64 size){
+		assert(isPowOf2(size));
 		return allocLog2(getPow2Log2(size));
 	}
 
@@ -81,6 +82,7 @@ public:
 	}
 
 	void freePow2(void* __restrict ptr, u64 size){
+		assert(isPowOf2(size));
 		freeLog2(ptr, getPow2Log2(size));
 	}
 

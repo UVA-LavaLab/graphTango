@@ -21,6 +21,9 @@ typedef		int8_t		i8;
 typedef		I64			Idx;
 
 #define 	MIN_RET_VAL  		2
+#ifndef _OPENMP
+#define _OPENMP
+#endif
 
 //#define LIKWID_PERFMON
 
@@ -38,6 +41,8 @@ typedef		I64			Idx;
 #define LIKWID_MARKER_GET(regionTag, nevents, events, time, count)
 #endif
 
+//#define ENABLE_PROFILING
+
 //#define		CALC_TYPE_SWITCH
 //#define		USE_CFH_FOR_DAH
 //#define		CALC_MEM_PER_EDGE
@@ -45,10 +50,19 @@ typedef		I64			Idx;
 //#define 	CALC_EDGE_TOUCHED
 //#define 	USE_HUGEPAGE
 
+#ifdef ENABLE_PROFILING
+#define		CALC_TYPE_SWITCH
+#define		CALC_MEM_PER_EDGE
+//#define 	CALC_EDGE_TOUCHED	/* do it later as it requires running the algo */
+#define		CALC_STATIC_TYPE_MAPPING
+#define		CALC_DYNNAMIC_TYPE_MAPPING
+#endif
+
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
 //#define 	USE_HYBRID_HASHMAP_WITH_CFH
-#define 	USE_GT_BALANCED
+#define 	USE_GT_LOAD_BALANCED
+//#define 	USE_GT_BALANCED
 //#define 	USE_GT_BALANCED_TYPE3_ONLY
 //#define 	USE_GT_BALANCED_MALLOC
 //#define 	USE_GT_BALANCED_STDMAP
@@ -82,12 +96,17 @@ typedef		I64			Idx;
 			|| defined(USE_GT_BALANCED_DYN_PARTITION)									\
 			|| defined(USE_GT_BALANCED_ABSEIL)											\
 			|| defined(USE_GT_BALANCED_RHH)												\
-			|| defined(USE_GT_BALANCED_TSL_RHH)
-#define		HYBRID_HASH_PARTITION		32UL
+			|| defined(USE_GT_BALANCED_TSL_RHH)											\
+			|| defined(USE_GT_LOAD_BALANCED)
+#define		HYBRID_HASH_PARTITION		64UL
 #endif
 
 #ifdef		USE_SORTED_EDGES
 #define		LINEAR_BUFF_SIZE			512UL
+#endif
+
+#ifdef		USE_GT_LOAD_BALANCED
+#define		LB_NUMBER_OF_BUCKETS		128UL
 #endif
 
 typedef struct {
@@ -100,6 +119,10 @@ typedef enum {
 	VTYPE_2,
 	VTYPE_3
 } VType;
+
+constexpr bool isPowOf2(u64 num){
+	return !((num - 1) & num);
+}
 
 // Log2 for power of 2 integers
 //#define 	LOG2(x) 	__builtin_ctzl(x)

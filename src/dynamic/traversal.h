@@ -29,14 +29,19 @@ template<typename U>
 class neighborhood_iter<GraphTango<U>> {
 	friend class neighborhood<GraphTango<U>> ;
 private:
-	U* cursor;
+	u32 idx;
+	U* arr;
+	U** blocks;
+	bool isType3;
 public:
-	neighborhood_iter(U* _cursor) {
-		cursor = _cursor;
-	}
+	neighborhood_iter(u32 idx, U* arr, U** blocks, bool isType3) :
+			idx(idx),
+			arr(arr),
+			blocks(blocks),
+			isType3(isType3) { }
 
 	bool operator!=(const neighborhood_iter<GraphTango<U>> &it) {
-		return cursor != it.cursor;
+		return idx != it.idx;
 	}
 
 	neighborhood_iter& operator++() {
@@ -44,8 +49,11 @@ public:
 		#pragma omp atomic
 		g_edge_touched++;
 #endif
-
-		cursor++;
+		idx++;
+		if(isType3 && !(idx % EdgeArray<U>::BLOCK_SIZE)){
+			blocks++;
+			arr = *blocks;
+		}
 		return *this;
 	}
 
@@ -54,16 +62,22 @@ public:
 		#pragma omp atomic
 		g_edge_touched++;
 #endif
-		cursor++;
+		idx++;
+		if(isType3 && !(idx % EdgeArray<U>::BLOCK_SIZE)){
+			blocks++;
+			arr = *blocks;
+		}
 		return *this;
 	}
 
-	NodeID operator*() {
-		return cursor->getNodeID();
+	NodeID operator*() const {
+		u32 offset = idx % EdgeArray<U>::BLOCK_SIZE;
+		return arr[offset].getNodeID();
 	}
 
-	Weight extractWeight() {
-		return cursor->getWeight();
+	Weight extractWeight() const {
+		u32 offset = idx % EdgeArray<U>::BLOCK_SIZE;
+		return arr[offset].getWeight();
 	}
 };
 
@@ -782,39 +796,55 @@ public:
 		|| defined(USE_GT_BALANCED_DYN_PARTITION)	\
 		|| defined(USE_GT_BALANCED_ABSEIL)			\
 		|| defined(USE_GT_BALANCED_RHH)				\
-		|| defined(USE_GT_BALANCED_TSL_RHH)
+		|| defined(USE_GT_BALANCED_TSL_RHH)			\
+		|| defined(USE_GT_LOAD_BALANCED)
 
 template<typename U>
 class neighborhood<GraphTango<U>> {
 private:
-	U* _start;
-	uint64_t _size;
+
+	uint64_t degree;
+	U* arr = nullptr;
+	U** blocks = nullptr;
+	bool isType3 = false;
+
+
 public:
 	neighborhood(NodeID _node, GraphTango<U> *_ds, bool _in_neigh) {
 		if(_in_neigh){
 			if(_ds->vArray[_node].inEdges.capacity <= EdgeArray<U>::TH0){
-				_start = _ds->vArray[_node].inEdges.etype.type1.neigh;
+				arr = _ds->vArray[_node].inEdges.etype.type1.neigh;
+			}
+			else if(_ds->vArray[_node].inEdges.capacity <= EdgeArray<U>::TH1){
+				arr = _ds->vArray[_node].inEdges.etype.type2.neighArr;
 			}
 			else{
-				_start = _ds->vArray[_node].inEdges.etype.type2_3.neighArr;
+				arr = _ds->vArray[_node].inEdges.etype.type3.blockList[0];
+				blocks = _ds->vArray[_node].inEdges.etype.type3.blockList.data();
+				isType3 = true;
 			}
-			_size = _ds->vArray[_node].inEdges.degree;
+			degree = _ds->vArray[_node].inEdges.degree;
 		}
 		else{
 			if(_ds->vArray[_node].outEdges.capacity <= EdgeArray<U>::TH0){
-				_start = _ds->vArray[_node].outEdges.etype.type1.neigh;
+				arr = _ds->vArray[_node].outEdges.etype.type1.neigh;
+			}
+			else if(_ds->vArray[_node].outEdges.capacity <= EdgeArray<U>::TH1){
+				arr = _ds->vArray[_node].outEdges.etype.type2.neighArr;
 			}
 			else{
-				_start = _ds->vArray[_node].outEdges.etype.type2_3.neighArr;
+				arr = _ds->vArray[_node].outEdges.etype.type3.blockList[0];
+				blocks = _ds->vArray[_node].outEdges.etype.type3.blockList.data();
+				isType3 = true;
 			}
-			_size = _ds->vArray[_node].outEdges.degree;
+			degree = _ds->vArray[_node].outEdges.degree;
 		}
 	}
-	neighborhood_iter<GraphTango<U>> begin() {
-		return neighborhood_iter<GraphTango<U>>(_start);
+	neighborhood_iter<GraphTango<U>> begin() const {
+		return neighborhood_iter<GraphTango<U>>(0, arr, blocks, isType3);
 	}
-	neighborhood_iter<GraphTango<U>> end() {
-		return neighborhood_iter<GraphTango<U>>(_start + _size);
+	neighborhood_iter<GraphTango<U>> end() const {
+		return neighborhood_iter<GraphTango<U>>(degree, arr, blocks, isType3);
 	}
 };
 
