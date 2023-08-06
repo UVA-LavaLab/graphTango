@@ -25,7 +25,7 @@
 
 #include "LockFreePoolWithList.h"
 #include "CustomAllocator.h"
-#include "VertexArray.h"
+#include "Vertex.h"
 
 #include "GEmpty.h"
 #include "common.h"
@@ -43,32 +43,12 @@ public:
 #ifdef CALC_MEM_PER_EDGE
 		cout << "Total memory req: " << globalAllocator.totMem << endl;
 #endif
-
-
-//		std::cout << "Inserts--------------------" << std::endl;
-//		std::cout << "    Total: " << insTot << std::endl;
-//		std::cout << "    Succ : " << insSucc << std::endl;
-//		std::cout << "    Fail : " << insTot - insSucc << std::endl;
-//		std::cout << std::endl;
-//
-//		std::cout << "Deletes--------------------" << std::endl;
-//		std::cout << "    Total: " << delTot << std::endl;
-//		std::cout << "    Succ : " << delSucc << std::endl;
-//		std::cout << "    Fail : " << delTot - delSucc << std::endl;
-//		std::cout << std::endl;
-//
-//		std::cout << "Final number of edges: " << insSucc - delSucc << std::endl;
-//		ofstream out("probing_dist.csv");
-//		for(auto it : probingDist){
-//			out << it.first << "," << it.second << endl;
-//		}
 	}
 
 #if defined(USE_GT_LOAD_BALANCED)
 
 	Vertex<Neigh>* vArray;
 
-	//VertexArray<Neigh> vArray;
 	const int num_threads;
 
 #if defined(CALC_TYPE_SWITCH) || defined(CALC_DYNNAMIC_TYPE_MAPPING)
@@ -285,136 +265,6 @@ public:
 				}
 			}
 		}
-
-//
-//
-//
-//
-//		//int thMask = (1 << getNextPow2Log2(num_threads)) - 1;
-//
-//		#pragma omp parallel
-//		{
-//			const i64 actualTh = omp_get_thread_num();
-//			LIKWID_MARKER_START("upd");
-//			for(u64 i = 0; i < batchSize; i++){
-//				const i64 src = el[i].source;
-//				const i64 dst = el[i].destination;
-//
-//				//i64 targetTh = (src / 64) & thMask;
-//				i64 targetTh = (src / 64) % num_threads;
-//				if(targetTh == actualTh){
-//					if(!el[i].sourceExists){
-//						thInfo[actualTh].nodeCnt++;
-//					}
-//					if(!el[i].destExists){
-//						thInfo[actualTh].nodeCnt++;
-//					}
-//
-//					if(!affected[src]){
-//						affected[src] = true;
-//					}
-//
-//					#ifdef CALC_TYPE_SWITCH
-//					VType initType = VType::VTYPE_3;
-//					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
-//						initType = VType::VTYPE_1;
-//					}
-//					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
-//						initType = VType::VTYPE_2;
-//					}
-//					#endif
-//
-//					if(!el[i].isDelete){
-//						//insert out edge
-//						vArray[src].outEdges.insertEdge(dst, el[i].weight, thInfo[actualTh].edgeCnt);
-//					}
-//					else{
-//						//delete out edge
-//						vArray[src].outEdges.deleteEdge(dst, thInfo[actualTh].edgeCnt);
-//					}
-//
-//					#ifdef CALC_TYPE_SWITCH
-//					VType finType = VType::VTYPE_3;
-//					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
-//						finType = VType::VTYPE_1;
-//					}
-//					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
-//						finType = VType::VTYPE_2;
-//					}
-//					if(initType != finType){
-//						thInfo[actualTh].switchCnt++;
-//					}
-//					#endif
-//
-//					#ifdef CALC_DYNNAMIC_TYPE_MAPPING
-//					if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH0){
-//						thInfo[actualTh].type1++;
-//					}
-//					else if(vArray[src].outEdges.capacity <= EdgeArray<Neigh>::TH1){
-//						thInfo[actualTh].type2++;
-//					}
-//					else{
-//						thInfo[actualTh].type3++;
-//					}
-//					#endif
-//				}
-//
-//				//targetTh = (dst / 64) & thMask;
-//				targetTh = (dst / 64) % num_threads;
-//				if(targetTh == actualTh){
-//					if(!affected[dst]){
-//						affected[dst] = true;
-//					}
-//
-//					#ifdef CALC_TYPE_SWITCH
-//					VType initType = VType::VTYPE_3;
-//					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
-//						initType = VType::VTYPE_1;
-//					}
-//					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
-//						initType = VType::VTYPE_2;
-//					}
-//					#endif
-//
-//					u64 garbage;
-//					if(!el[i].isDelete){
-//						//insert in edge
-//						vArray[dst].inEdges.insertEdge(src, el[i].weight, garbage);
-//					}
-//					else{
-//						//delete in edge
-//						vArray[dst].inEdges.deleteEdge(src, garbage);
-//					}
-//
-//					#ifdef CALC_TYPE_SWITCH
-//					VType finType = VType::VTYPE_3;
-//					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
-//						finType = VType::VTYPE_1;
-//					}
-//					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
-//						finType = VType::VTYPE_2;
-//					}
-//					if(initType != finType){
-//						thInfo[actualTh].switchCnt++;
-//					}
-//					#endif
-//
-//					#ifdef CALC_DYNNAMIC_TYPE_MAPPING
-//					if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH0){
-//						thInfo[actualTh].type1++;
-//					}
-//					else if(vArray[dst].inEdges.capacity <= EdgeArray<Neigh>::TH1){
-//						thInfo[actualTh].type2++;
-//					}
-//					else{
-//						thInfo[actualTh].type3++;
-//					}
-//					#endif
-//				}
-//
-//			}
-//			LIKWID_MARKER_STOP("upd");
-//		}
 #else
 		for(u64 i = 0; i < batchSize; i++){
 			const u64 src = el[i].source;

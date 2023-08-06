@@ -11,7 +11,7 @@
 
 #define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
 
-template <u64 MAX_THREADS = 32, u64 MAX_SEGMENT_BITS = 32, u64 BLOCK_SIZE = (1UL << 22)>
+template <u64 MAX_THREADS = 64, u64 MAX_SEGMENT_BITS = 32, u64 BLOCK_SIZE = (1UL << 22)>
 class LockFreePoolWithList {
 	alignas(64) void* __restrict nextFreePtrs[MAX_THREADS][MAX_SEGMENT_BITS];
 
