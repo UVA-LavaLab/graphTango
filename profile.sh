@@ -5,17 +5,16 @@ rm -rf time.csv
 
 #export LD_LIBRARY_PATH=/home/alif/.installs/likwid/lib/ib/ 
 export OMP_DISPLAY_ENV=true
-export OMP_NUM_THREADS=24
-export OMP_PROC_BIND=close
-#export OMP_PLACES={2}:64:1
-export OMP_PLACES=threads
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=true
+export OMP_PLACES={0}:12:1
 
 dataDir=/bigtemp/fas9nw/datasets/
 #STRUCTURES=(adListChunked adListShared stinger)
 #STRUCTURES=(graphite adListChunked adListShared degAwareRHH stinger)
 STRUCTURES=(graphTango)
 batchSize=1000000
-NumThreads=24
+NumThreads=12
 
 # whether each algorithm is weighted or unweighted
 declare -A ALGORITHMS 
@@ -23,8 +22,6 @@ ALGORITHMS=(
          [ccdyn]=0         
          [prdyn]=0
          [bfsdyn]=0
-#         [mcdyn]=0 
-#         [sswpdyn]=1
          [ssspdyn]=1
 )
 
@@ -35,9 +32,7 @@ DATASETS=(
        [orkut.el]=3072441       
        [wiki.el]=1791489
        [talk.el]=2394385
-#       [twitter.el]=61578415       
        [road.el]=23947347       
-#       [web.el]=50636151
        [urand_24.el]=16777216
        [kron_24.el]=16777216
 )
