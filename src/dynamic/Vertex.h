@@ -76,7 +76,7 @@ public:
 #endif
 
 
-#if defined(USE_GT_BALANCED) || defined(USE_GT_BALANCED_DYN_PARTITION)
+#if defined(USE_GT_BALANCED) || defined(USE_GT_BALANCED_DYN_PARTITION) || defined(USE_GT_LOAD_BALANCED)
 
 #define 	FLAG_EMPTY_SLOT			0xFFFFFFFFU
 #define 	FLAG_TOMB_STONE			0xFFFFFFFEU
@@ -86,39 +86,31 @@ template <typename Neigh>
 class alignas(CACHE_LINE_SIZE) EdgeArray{
 
 private:
-	void rebuildHashTable(u64 oldCap, u64 newCap){
-		if(oldCap > TH1){
-			//free old map
-			globalAllocator.freePow2(etype.type2_3.mapArr, oldCap * 2 * sizeof(DstLocPair));
-			etype.type2_3.mapArr = nullptr;
-		}
+	void rebuildHashTable(u64 newCap){
+		//allocate new map
+		etype.type2_3.mapArr = (DstLocPair*)globalAllocator.allocate(newCap * sizeof(DstLocPair));
+		etype.type2_3.mapSize = newCap;
 
-		if(newCap > TH1){
-			//allocate new map
-			etype.type2_3.mapArr = (DstLocPair*)globalAllocator.allocate(newCap * 2 * sizeof(DstLocPair));
+		DstLocPair* __restrict locMap = etype.type2_3.mapArr;
+		memset(locMap, -1, newCap * sizeof(DstLocPair));
 
-			DstLocPair* __restrict locMap = etype.type2_3.mapArr;
-			memset(locMap, -1, newCap * 2 * sizeof(DstLocPair));
-
-			const u32 mask = newCap * 2 - 1;
-
-			//add existing nodes to hash
-			const Neigh* __restrict nn = etype.type2_3.neighArr;
-			for(u64 i = 0; i < degree; i++){
-				const u32 dst = nn[i].node;
-				u32 idx = dst & mask;
-				while(true){
-					if(locMap[idx].dst == FLAG_EMPTY_SLOT){
-						//found insertion point
-						locMap[idx].dst = dst;
-						locMap[idx].loc = i;
-						break;
-					}
-					//move on
-					idx++;
-					if(idx == (newCap * 2)){
-						idx = 0;
-					}
+		const u32 mask = newCap - 1;
+		//add existing nodes to hash
+		const Neigh* __restrict nn = etype.type2_3.neighArr;
+		for(u64 i = 0; i < degree; i++){
+			const u32 dst = nn[i].node;
+			u32 idx = dst & mask;
+			while(true){
+				if(locMap[idx].dst == FLAG_EMPTY_SLOT){
+					//found insertion point
+					locMap[idx].dst = dst;
+					locMap[idx].loc = i;
+					break;
+				}
+				//move on
+				idx++;
+				if(idx == newCap){
+					idx = 0;
 				}
 			}
 		}
@@ -141,6 +133,7 @@ public:
 		struct {
 			Neigh* 			__restrict neighArr = nullptr;
 			DstLocPair* 	__restrict mapArr = nullptr;
+			u64 mapSize = 0;
 		} type2_3;
 	} etype;
 
@@ -152,19 +145,23 @@ public:
 			capacity = getNextPow2(capacity * 2);
 			Neigh* __restrict newPtr = (Neigh*)globalAllocator.allocPow2(capacity * sizeof(Neigh));
 
-			if(degree <= TH0){	//Going from Type 1 to Type 2
+			//handle old type
+			if(degree <= TH0){
 				memcpy(newPtr, etype.type1.neigh, degree * sizeof(Neigh));
-				etype.type2_3.mapArr = nullptr;
 			}
-			else{				//Type 2 or 3
+			else {
 				memcpy(newPtr, etype.type2_3.neighArr, degree * sizeof(Neigh));
-				globalAllocator.freePow2(etype.type2_3.neighArr, capacity / 2 * sizeof(Neigh));
+				globalAllocator.freePow2(etype.type2_3.neighArr, degree * sizeof(Neigh));
 			}
 			etype.type2_3.neighArr = newPtr;
 
-			//Grow hash table if needed
-			rebuildHashTable(capacity / 2, capacity);
+			//handle new type
+			if(degree <= TH1 && capacity > TH1){
+				rebuildHashTable(capacity);
+			}
 		}
+
+		
 
 		Neigh* __restrict currNeighArr;
 
@@ -188,7 +185,14 @@ public:
 		}
 		else{
 			//type 3, use hash table + adj list
-			u32 idx = dstId & (capacity * 2 - 1);
+			//Grow hash table if needed
+			float loadFactor = 1.0 * degree / etype.type2_3.mapSize;
+			if(loadFactor >= GT_MAX_LOAD_FACTOR) {
+				//free old map
+				globalAllocator.freePow2(etype.type2_3.mapArr, etype.type2_3.mapSize * sizeof(DstLocPair));
+				rebuildHashTable(etype.type2_3.mapSize * 2);
+			}
+			u32 idx = dstId & (etype.type2_3.mapSize - 1);
 			DstLocPair* __restrict locMap = etype.type2_3.mapArr;
 			DstLocPair* __restrict insLoc = nullptr;
 			//probe = 0;
@@ -214,7 +218,7 @@ public:
 				}
 				//move on
 				idx++;
-				if(idx == (capacity * 2)){
+				if(idx == etype.type2_3.mapSize){
 					idx = 0;
 				}
 			}
@@ -261,7 +265,7 @@ public:
 		}
 		else{
 			//using hashed mode
-			u32 idx = dstId & (capacity * 2 - 1);
+			u32 idx = dstId & (etype.type2_3.mapSize - 1);
 			DstLocPair* __restrict locMap = etype.type2_3.mapArr;
 			while(true){
 				if(locMap[idx].dst == dstId){
@@ -278,10 +282,10 @@ public:
 						currNeighArr[loc] = currNeighArr[degree];
 
 						//point to correct location of the swapped entry
-						u32 idxMoved = node & (capacity * 2 - 1);
+						u32 idxMoved = node & (etype.type2_3.mapSize - 1);
 						while(locMap[idxMoved].dst != node){
 							idxMoved++;
-							if(idxMoved == (capacity * 2)){
+							if(idxMoved == etype.type2_3.mapSize){
 								idxMoved = 0;
 							}
 						}
@@ -295,7 +299,7 @@ public:
 				}
 				//move on
 				idx++;
-				if(idx == (capacity * 2)){
+				if(idx == etype.type2_3.mapSize){
 					idx = 0;
 				}
 			}
@@ -325,8 +329,8 @@ public:
 			globalAllocator.freePow2(oldPtr, oldCap * sizeof(Neigh));
 
 			//shrink or delete hash table if needed
-			rebuildHashTable(oldCap, newCap);
-		}
+			//rebuildHashTable(oldCap, newCap);
+		}   
 	}
 };
 

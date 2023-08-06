@@ -48,7 +48,8 @@ typedef		I64			Idx;
 //define only one of the following
 //#define 	USE_HYBRID_HASHMAP
 //#define 	USE_HYBRID_HASHMAP_WITH_CFH
-#define 	USE_GT_BALANCED
+#define 	USE_GT_LOAD_BALANCED
+//#define 	USE_GT_BALANCED
 //#define 	USE_GT_BALANCED_TYPE3_ONLY
 //#define 	USE_GT_BALANCED_MALLOC
 //#define 	USE_GT_BALANCED_STDMAP
@@ -67,7 +68,7 @@ typedef		I64			Idx;
 //#define		USE_SORTED_EDGES
 //#define		USE_CAHCE_FRIENDLY_HASH
 //#define		USE_CAHCE_FRIENDLY_HASH_ONLY
-
+#define GT_MAX_LOAD_FACTOR				0.875f
 #if			defined(USE_HYBRID_HASHMAP)													\
 			|| defined(USE_HYBRID_HASHMAP_WITH_CFH)										\
 			|| defined(USE_HYBRID_HASHMAP_WITH_GROUPING)								\
@@ -82,12 +83,17 @@ typedef		I64			Idx;
 			|| defined(USE_GT_BALANCED_DYN_PARTITION)									\
 			|| defined(USE_GT_BALANCED_ABSEIL)											\
 			|| defined(USE_GT_BALANCED_RHH)												\
-			|| defined(USE_GT_BALANCED_TSL_RHH)
-#define		HYBRID_HASH_PARTITION		32UL
+			|| defined(USE_GT_BALANCED_TSL_RHH)											\
+			|| defined(USE_GT_LOAD_BALANCED)
+#define		HYBRID_HASH_PARTITION		64UL
 #endif
 
 #ifdef		USE_SORTED_EDGES
 #define		LINEAR_BUFF_SIZE			512UL
+#endif
+
+#ifdef USE_GT_LOAD_BALANCED
+#define		LB_NUMBER_OF_BUCKETS		256UL
 #endif
 
 typedef struct {
