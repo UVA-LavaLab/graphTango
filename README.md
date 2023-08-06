@@ -13,10 +13,12 @@ Please refer to [SAGA-Bench](https://github.com/abasak24/SAGA-Bench) for the com
 ## Input Datasets
 We used *.csv* format where each line contains the following:
 ```
-[source vertex ID], [destination vertex ID], [timestamp], [weight]
-```
-Graph datasets are first randomly shuffled to break any ordering in the input files. This is done to ensure the realistic scenario that streaming edges are not likely to come in any pre-defined order. The shuffled input file is then read in batches. The resources for preparing the input datasets are provided in the folder inputResource. `inputResource/shuffle.sh` can be used to shuffle a dataset file in .txt format (e.g., those found in [SNAP](https://snap.stanford.edu/data/)). After shuffling, timestamps and weights can be added using `inputResource/addWeightAndTime.sh` and `inputResource/appendValues.py`, which will result in the final *.csv* format.
+For weighted graph:
+[source vertex ID], [destination vertex ID], [weight]
 
+For unwieghted graph:
+[source vertex ID], [destination vertex ID]
+```
 
 ## Compiling and Running GraphTango
 GraphTango has been tested on Ubuntu 20.04 LTS with gcc 9.3.0. To build, run the following commands:
